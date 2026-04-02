@@ -1,0 +1,15 @@
+{
+  "name": "Life Organizer",
+  "short_name": "Life Org",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1c1c1e",
+  "theme_color": "#4caf80",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234caf80'/><text x='50' y='68' text-anchor='middle' font-size='50' fill='white'>L</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
