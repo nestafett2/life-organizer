@@ -1,0 +1,5119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Life Organizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+
+  :root {
+    --bg: #1c1c1e;
+    --surface: #2c2c2e;
+    --surface-raised: #3a3a3c;
+    --border: #3a3a3c;
+    --border-subtle: #2c2c2e;
+    --text-primary: #ffffff;
+    --text-secondary: #c8c8cc;
+    --text-tertiary: #8e8e96;
+    --accent: #4caf80;
+    --accent-light: #1e3329;
+    --overdue: #e05c4b;
+    --overdue-light: #2d1c1a;
+
+    /* Calendar colors — vivid on dark */
+    --cal-1: #5b9cf6;
+    --cal-2: #f0883e;
+    --cal-3: #b07ef8;
+    --cal-4: #4caf80;
+    --cal-5: #f06a6a;
+
+    --nav-height: 82px;
+    --capture-bottom: 84px;
+    --week-strip-height: 88px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── APP SHELL ── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 430px;
+    margin: 0 auto;
+    position: relative;
+    background: var(--bg);
+  }
+
+  /* ── BOTTOM NAV ── */
+  #top-nav {
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 100;
+    flex-shrink: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 430px;
+    margin: 0 auto;
+    order: 99;
+  }
+
+  .nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 4px;
+    cursor: pointer;
+    transition: color 0.15s;
+    color: var(--text-tertiary);
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    gap: 4px;
+    border: none;
+    background: none;
+    -webkit-appearance: none;
+  }
+
+  .nav-tab.active {
+    color: var(--accent);
+  }
+
+  .nav-tab svg {
+    width: 28px;
+    height: 32px;
+    stroke-width: 1.6;
+  }
+
+  /* ── VIEWS ── */
+  .view {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .view.active {
+    display: flex;
+  }
+
+  /* ── WEEK STRIP ── */
+  #week-strip {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px 14px;
+    flex-shrink: 0;
+  }
+
+  .week-strip-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .week-strip-header h2 {
+    font-size: 33.6px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+  }
+
+  .week-strip-header span {
+    font-size: 18px;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  .week-days {
+    display: flex;
+    gap: 4px;
+  }
+
+  .week-day {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 2px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .week-day:hover {
+    background: var(--surface-raised);
+  }
+
+  .week-day.today .day-num {
+    background: var(--accent);
+    color: white;
+  }
+
+  .week-day.selected:not(.today) .day-num {
+    background: var(--border);
+  }
+
+  .day-label {
+    font-size: 13.2px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .week-day.today .day-label {
+    color: var(--accent);
+  }
+
+  .day-num {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 20.4px;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background 0.15s;
+  }
+
+  .day-dots {
+    display: flex;
+    gap: 2px;
+    height: 4px;
+    align-items: center;
+  }
+
+  .day-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+  }
+
+  /* ── MONTH CALENDAR DROPDOWN ── */
+  #month-dropdown {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+  }
+
+  #month-dropdown.open {
+    max-height: 340px;
+  }
+
+  .month-cal-inner {
+    padding: 8px 16px 16px;
+  }
+
+  .month-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .month-cal-title {
+    font-size: 19.2px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.2px;
+  }
+
+  .month-nav-btn {
+    background: var(--surface-raised);
+    border: none;
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .month-nav-btn:hover { background: var(--border); }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .month-day-label {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 4px 0 6px;
+  }
+
+  .month-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    position: relative;
+  }
+
+  .month-day:hover { background: var(--surface-raised); color: var(--text-primary); }
+  .month-day.other-month { color: var(--text-tertiary); opacity: 0.4; }
+  .month-day.today { background: var(--accent); color: #0a1f14; font-weight: 600; }
+  .month-day.today:hover { background: var(--accent); }
+  .month-day.selected:not(.today) { background: var(--surface-raised); color: var(--text-primary); font-weight: 500; }
+
+  .month-day-dot {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* make the month label clickable */
+  #month-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15.6px;
+    color: var(--text-secondary);
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+
+  #month-toggle-btn:hover { background: var(--surface-raised); }
+
+  #month-toggle-btn svg {
+    transition: transform 0.25s;
+  }
+
+  #month-toggle-btn.open svg {
+    transform: rotate(180deg);
+  }
+
+
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(var(--capture-bottom) + var(--nav-height) + 20px);
+  }
+
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* ── SECTION HEADERS ── */
+  .section-header {
+    padding: 20px 20px 8px;
+    font-size: 15.6px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  /* ── TASK / EVENT ITEMS ── */
+  .item-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 20px;
+    gap: 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    transition: transform 0.25s ease, opacity 0.25s ease, background 0.15s;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  .item-row:first-child {
+    border-top: 1px solid var(--border);
+  }
+
+  .item-row:active {
+    background: var(--surface-raised);
+  }
+
+  /* swipe reveal */
+  .item-row.swiping-complete {
+    background: var(--accent-light);
+  }
+
+  .item-row.swiping-schedule {
+    background: #2a2410;
+  }
+
+  .item-row.completing {
+    animation: completeAnim 0.35s ease forwards;
+  }
+
+  @keyframes completeAnim {
+    to { opacity: 0; transform: translateX(60px); max-height: 0; padding: 0; }
+  }
+
+  /* left: calendar dot or checkbox */
+  .item-indicator {
+    flex-shrink: 0;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .task-checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .task-checkbox:active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .task-checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .task-checkbox.checked::after {
+    content: '';
+    width: 8px;
+    height: 5px;
+    border-left: 1.5px solid white;
+    border-bottom: 1.5px solid white;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+
+  .cal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  /* item content */
+  .item-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .item-title {
+    font-size: 20.4px;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.4;
+    letter-spacing: -0.1px;
+  }
+
+  .item-title.completed {
+    text-decoration: line-through;
+    color: var(--text-tertiary);
+  }
+
+  .item-title.overdue {
+    color: var(--overdue);
+  }
+
+  .item-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+  }
+
+  .item-time {
+    font-size: 18px;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  .item-time.overdue {
+    color: var(--overdue);
+    font-weight: 500;
+  }
+
+  .item-project {
+    font-size: 16.8px;
+    color: var(--text-tertiary);
+    font-weight: 400;
+  }
+
+  .item-project::before {
+    content: '·';
+    margin-right: 6px;
+  }
+
+  .item-flag {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #e67e22;
+    flex-shrink: 0;
+  }
+
+  /* priority flag on right */
+  .item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── CALENDAR EVENT STYLE ── */
+  .item-row.is-event {
+    background: var(--surface);
+  }
+
+  .item-row.is-event .item-title {
+    font-weight: 400;
+  }
+
+  /* ── OVERDUE SECTION ── */
+  .item-row.is-overdue {
+    background: var(--overdue-light);
+  }
+
+  /* ── CAPTURE BUTTONS ── */
+  #capture-bar {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nav-height) + 16px);
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 200;
+  }
+
+  .capture-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08);
+    transition: transform 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+  }
+
+  .capture-btn:active {
+    box-shadow: 0 1px 8px rgba(0,0,0,0.12);
+  }
+
+  .capture-option:active {
+    transform: scale(0.93);
+  }
+
+  #btn-add {
+    background: var(--accent);
+    color: white;
+    width: 56px;
+    height: 56px;
+    transition: transform 0.25s ease;
+    z-index: 2;
+  }
+
+  #btn-add.expanded {
+    transform: rotate(45deg);
+  }
+
+  .capture-option {
+    background: var(--surface-raised);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    position: absolute;
+    bottom: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+  }
+
+  #capture-bar.expanded .capture-option#btn-type {
+    transform: translateY(-68px);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #capture-bar.expanded .capture-option#btn-voice {
+    transform: translateY(-130px);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #btn-voice.listening {
+    background: #fdf0ef;
+    color: var(--overdue);
+    border-color: #f5c6c3;
+    animation: pulse 1.2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.2); }
+    50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); }
+  }
+
+  /* ── INBOX QUICK-ADD ── */
+  #quick-add-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 300;
+    align-items: flex-end;
+  }
+
+  #quick-add-overlay.open {
+    display: flex;
+  }
+
+  #quick-add-sheet {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    background: var(--surface-raised);
+    border-radius: 18px 18px 0 0;
+    padding: 16px 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .quick-add-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .quick-add-label {
+    font-size: 14.4px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+  }
+
+  #quick-add-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 20.4px;
+    font-weight: 400;
+    color: var(--text-primary);
+    background: transparent;
+    padding: 4px 0 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  #quick-add-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .quick-add-hint {
+    font-size: 14.4px;
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+  }
+
+  .quick-add-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .qa-cancel {
+    font-size: 18px;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    padding: 8px 0;
+  }
+
+  .qa-submit {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 22px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .qa-submit:disabled {
+    opacity: 0.4;
+  }
+
+  /* ── INBOX VIEW ── */
+  .inbox-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text-tertiary);
+    padding: 40px;
+  }
+
+  .inbox-empty p {
+    font-size: 19.2px;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .inbox-empty .inbox-empty-title {
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  /* ── AREAS / PROJECTS ── */
+  .area-section {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .area-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    cursor: pointer;
+  }
+
+  .area-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .area-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .area-name {
+    font-size: 20.4px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .area-count {
+    font-size: 16.8px;
+    color: var(--text-tertiary);
+  }
+
+  .area-chevron {
+    transition: transform 0.2s;
+    color: var(--text-tertiary);
+  }
+
+  .area-chevron.open {
+    transform: rotate(90deg);
+  }
+
+  .area-projects {
+    display: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .area-projects.open {
+    display: block;
+  }
+
+  .project-row {
+    display: flex;
+    align-items: center;
+    padding: 11px 20px 11px 40px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    gap: 10px;
+  }
+
+  .project-row:last-child {
+    border-bottom: none;
+  }
+
+  .project-name {
+    flex: 1;
+    font-size: 19.2px;
+    color: var(--text-primary);
+  }
+
+  .project-progress {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    width: 48px;
+  }
+
+  .project-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .project-task-count {
+    font-size: 15.6px;
+    color: var(--text-tertiary);
+  }
+
+  /* ── UPCOMING VIEW ── */
+  .upcoming-date-header {
+    padding: 20px 20px 8px;
+  }
+
+  .upcoming-date-header .date-label {
+    font-size: 21.6px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.1px;
+  }
+
+  .upcoming-date-header .date-sub {
+    font-size: 15.6px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── SWIPE FEEDBACK LABELS ── */
+  .swipe-label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14.4px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.1s;
+    pointer-events: none;
+  }
+
+  .swipe-label.left {
+    left: 16px;
+    color: var(--accent);
+  }
+
+  .swipe-label.right {
+    right: 16px;
+    color: #b7950b;
+  }
+
+  /* ── TASK DETAIL SHEET ── */
+  #task-detail-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 400;
+    align-items: flex-end;
+  }
+
+  #task-detail-overlay.open {
+    display: flex;
+  }
+
+  #task-detail-sheet {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    min-height: 60dvh;
+    max-height: 92dvh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  /* drag handle + header */
+  .td-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 14px;
+    flex-shrink: 0;
+  }
+
+  .td-handle {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 10px;
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  .td-done-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16.8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .td-done-btn:hover {
+    background: var(--surface-raised);
+  }
+
+  .td-done-btn.completed {
+    color: var(--accent);
+  }
+
+  .td-done-btn .td-checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .td-done-btn.completed .td-checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .td-done-btn.completed .td-checkbox::after {
+    content: '';
+    width: 8px;
+    height: 5px;
+    border-left: 1.5px solid white;
+    border-bottom: 1.5px solid white;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+
+  .td-close {
+    background: var(--surface-raised);
+    border: none;
+    color: var(--text-secondary);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 21.6px;
+    line-height: 1;
+    transition: background 0.15s;
+  }
+
+  .td-close:hover { background: var(--border); }
+
+  /* scrollable body */
+  .td-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 16px;
+  }
+
+  .td-body::-webkit-scrollbar { display: none; }
+
+  /* spacer above title */
+  .td-title-spacer {
+    height: 20px;
+  }
+
+  #td-title {
+    width: 100%;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 31.2px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    padding: 28px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    resize: none;
+    overflow: hidden;
+    line-height: 1.3;
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+  }
+
+  #td-title::placeholder { color: var(--text-tertiary); }
+
+  /* field rows */
+  .td-field {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .td-field:last-of-type {
+    border-bottom: none;
+  }
+
+  .td-field:active { opacity: 0.6; }
+
+  .td-field-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--surface-raised);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+  }
+
+  .td-field-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.8;
+  }
+
+  .td-field-label {
+    font-size: 15.6px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    width: 72px;
+  }
+
+  .td-field-value {
+    flex: 1;
+    font-size: 17.4px;
+    color: var(--text-primary);
+    text-align: right;
+  }
+
+  .td-field-value.placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .td-field-value.accent {
+    color: var(--accent);
+  }
+
+  .td-field-value.overdue {
+    color: var(--overdue);
+  }
+
+  /* notes */
+  #td-notes {
+    width: 100%;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 17.4px;
+    color: var(--text-secondary);
+    padding: 14px 0;
+    resize: none;
+    min-height: 80px;
+    line-height: 1.6;
+  }
+
+  #td-notes::placeholder { color: var(--text-tertiary); }
+
+  /* priority toggle */
+  .td-priority-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .td-toggle {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    margin-left: auto;
+  }
+
+  .td-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+
+  .td-toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--surface-raised);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .td-toggle input:checked + .td-toggle-track {
+    background: var(--accent);
+  }
+
+  .td-toggle-track::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .td-toggle input:checked + .td-toggle-track::after {
+    transform: translateX(18px);
+  }
+
+  /* date picker inline */
+  .td-date-picker {
+    display: none;
+    padding: 12px 0 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .td-date-picker.open { display: block; }
+
+  #td-date-input {
+    width: 100%;
+    background: var(--surface-raised);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16.8px;
+    color: var(--text-primary);
+    outline: none;
+    color-scheme: dark;
+  }
+
+  /* project picker */
+  .td-project-picker {
+    display: none;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .td-project-picker.open { display: block; }
+
+  .td-project-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16.8px;
+    color: var(--text-primary);
+    transition: background 0.15s;
+  }
+
+  .td-project-option:hover { background: var(--surface-raised); }
+
+  .td-project-option.selected { color: var(--accent); }
+
+  .td-project-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* bottom action bar */
+  .td-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px 4px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .td-delete {
+    background: none;
+    border: none;
+    color: var(--overdue);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16.8px;
+    cursor: pointer;
+    padding: 8px 0;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+  }
+
+  .td-delete:hover { opacity: 1; }
+
+  .td-save {
+    background: var(--accent);
+    color: #0a1f14;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16.8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .td-save:hover { opacity: 0.85; }
+
+
+  /* ── SETTINGS ── */
+  .settings-section {
+    margin-bottom: 28px;
+  }
+
+  .settings-section-title {
+    font-size: 14.4px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    padding: 20px 20px 8px;
+  }
+
+  .settings-group {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    gap: 14px;
+  }
+
+  .settings-row:last-child {
+    border-bottom: none;
+  }
+
+  .settings-row-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .settings-row-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .settings-row-label {
+    font-size: 20.4px;
+    color: var(--text-primary);
+    font-weight: 400;
+  }
+
+  .settings-row-sub {
+    font-size: 15.6px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+  }
+
+  .settings-row-value {
+    font-size: 16.8px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .settings-row-value.connected {
+    color: var(--accent);
+  }
+
+  .settings-chevron {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .settings-input-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .settings-input-row .settings-row-label-line {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .settings-field-input {
+    width: 100%;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15.6px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .settings-field-input:focus {
+    border-color: var(--accent);
+  }
+
+  .settings-field-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .settings-save-btn {
+    background: var(--accent);
+    color: #0a1f14;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15.6px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-end;
+    transition: opacity 0.15s;
+  }
+
+  .settings-save-btn:hover { opacity: 0.85; }
+
+  .settings-danger-btn {
+    background: none;
+    border: none;
+    color: var(--overdue);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16.8px;
+    cursor: pointer;
+    padding: 14px 20px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .settings-badge {
+    font-size: 13.2px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+
+  .settings-badge.soon {
+    background: var(--surface-raised);
+    color: var(--text-tertiary);
+  }
+
+  .settings-badge.connected {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+
+  /* ════════════════════════════════════════════════════════
+     DESKTOP LAYOUT — Things 3 style, kicks in at 768px+
+     ════════════════════════════════════════════════════════ */
+
+  @media (min-width: 768px) {
+
+    /* Remove phone constraints */
+    #app {
+      max-width: 100%;
+      flex-direction: row;
+    }
+
+    /* Hide phone top nav */
+    #top-nav { display: none; }
+
+    /* Hide phone capture buttons */
+    #capture-bar { display: none; }
+
+    /* ── SIDEBAR ── */
+    #desktop-sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: #242426;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+      padding-bottom: 20px;
+    }
+
+    #desktop-sidebar::-webkit-scrollbar { display: none; }
+
+    .sb-top {
+      padding: 20px 12px 8px;
+    }
+
+    /* Quick add button in sidebar */
+    .sb-new-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: background 0.15s, color 0.15s;
+      text-align: left;
+    }
+
+    .sb-new-btn:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+    }
+
+    .sb-new-btn .sb-plus {
+      width: 22px;
+      height: 22px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+      line-height: 1;
+      color: white;
+    }
+
+    /* Sidebar nav items */
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      transition: background 0.12s, color 0.12s;
+      margin: 0 4px;
+      user-select: none;
+    }
+
+    .sb-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+    }
+
+    .sb-item.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .sb-item-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .sb-item-label { flex: 1; }
+
+    .sb-item-count {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      font-weight: 400;
+    }
+
+    .sb-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      padding: 16px 16px 4px;
+    }
+
+    .sb-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.06);
+      margin: 8px 12px;
+    }
+
+    /* Area rows in sidebar */
+    .sb-area {
+      margin: 0 4px;
+    }
+
+    .sb-area-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 15px;
+      font-weight: 500;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .sb-area-header:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+    }
+
+    .sb-area-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .sb-area-chevron {
+      margin-left: auto;
+      transition: transform 0.2s;
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+    }
+
+    .sb-area-chevron.open { transform: rotate(90deg); }
+
+    .sb-projects {
+      display: none;
+      padding-left: 8px;
+    }
+
+    .sb-projects.open { display: block; }
+
+    .sb-project {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px 6px 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--text-tertiary);
+      transition: background 0.12s, color 0.12s;
+      margin: 0 4px;
+    }
+
+    .sb-project:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-secondary);
+    }
+
+    .sb-project.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-primary);
+    }
+
+    /* Settings at bottom of sidebar */
+    .sb-bottom {
+      margin-top: auto;
+      padding-top: 8px;
+    }
+
+    /* ── MAIN CONTENT ── */
+    #desktop-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* Desktop content header */
+    #desktop-content-header {
+      padding: 32px 40px 0;
+      flex-shrink: 0;
+    }
+
+    #desktop-content-title {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    #desktop-content-subtitle {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      font-weight: 400;
+    }
+
+    /* Desktop new task input bar */
+    #desktop-new-task {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 40px 0;
+      padding: 12px 16px;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      transition: border-color 0.15s;
+      flex-shrink: 0;
+    }
+
+    #desktop-new-task:focus-within {
+      border-color: var(--accent);
+    }
+
+    #desktop-new-task-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--text-primary);
+    }
+
+    #desktop-new-task-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    /* Desktop scroll area */
+    #desktop-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 40px 40px;
+    }
+
+    #desktop-scroll::-webkit-scrollbar { width: 6px; }
+    #desktop-scroll::-webkit-scrollbar-track { background: transparent; }
+    #desktop-scroll::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    /* Desktop task rows — cleaner than mobile */
+    #desktop-scroll .item-row {
+      background: transparent;
+      border-bottom: none;
+      border-top: none;
+      padding: 6px 8px;
+      border-radius: 8px;
+      margin: 1px 0;
+    }
+
+    #desktop-scroll .item-row:first-child { border-top: none; }
+
+    #desktop-scroll .item-row:hover {
+      background: var(--surface);
+    }
+
+    #desktop-scroll .item-row.is-overdue {
+      background: var(--overdue-light);
+      border-radius: 8px;
+    }
+
+    #desktop-scroll .section-header {
+      padding: 20px 8px 6px;
+      font-size: 11px;
+    }
+
+    /* Views hidden on desktop (phone views) */
+    #view-today, #view-inbox, #view-lists,
+    #view-categories, #view-upcoming, #view-places, #view-someday, #view-projects, #view-settings {
+      display: none !important;
+    }
+
+    /* Desktop wrapper shown instead */
+    #desktop-wrapper {
+      display: flex !important;
+      flex: 1;
+      overflow: hidden;
+    }
+
+  }
+
+  /* Hide desktop wrapper on mobile */
+  #desktop-wrapper {
+    display: none;
+    width: 100%;
+  }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- BOTTOM NAV (built dynamically by buildNavBar) -->
+  <nav id="top-nav"></nav>
+
+  <!-- TODAY VIEW -->
+  <div class="view active" id="view-today">
+
+    <!-- Week Strip -->
+    <div id="week-strip">
+      <div class="week-strip-header">
+        <h2 id="today-heading">Today</h2>
+        <button id="month-toggle-btn">
+          <span id="today-date-label"></span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+      <div class="week-days" id="week-days"></div>
+    </div>
+
+    <!-- Month dropdown -->
+    <div id="month-dropdown">
+      <div class="month-cal-inner">
+        <div class="month-cal-header">
+          <button class="month-nav-btn" id="month-prev">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="month-cal-title" id="month-cal-title"></span>
+          <button class="month-nav-btn" id="month-next">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div class="month-grid" id="month-grid"></div>
+      </div>
+    </div>
+
+    <!-- Scrollable list -->
+    <div class="scroll-area" id="today-list"></div>
+  </div>
+
+  <!-- INBOX VIEW -->
+  <div class="view" id="view-inbox">
+    <div class="scroll-area" id="inbox-list">
+      <div class="inbox-empty">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.4"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <p class="inbox-empty-title">Inbox is empty</p>
+        <p>Tap + or the mic to quickly capture a task or idea. It'll land here first.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LISTS VIEW -->
+  <div class="view" id="view-lists">
+    <div class="scroll-area" id="lists-list"></div>
+  </div>
+
+  <!-- AREAS VIEW -->
+  <div class="view" id="view-categories">
+    <div class="scroll-area" id="categories-list"></div>
+  </div>
+
+  <!-- PLACES VIEW -->
+  <div class="view" id="view-places">
+    <div class="scroll-area" id="places-list"></div>
+  </div>
+
+  <!-- UPCOMING VIEW -->
+  <div class="view" id="view-upcoming">
+    <div class="scroll-area" id="upcoming-list"></div>
+  </div>
+
+  <div class="view" id="view-someday">
+    <div class="scroll-area" id="someday-list"></div>
+  </div>
+
+  <div class="view" id="view-projects">
+    <div class="scroll-area" id="projects-list"></div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div class="view" id="view-settings">
+    <div class="scroll-area" id="settings-list"></div>
+  </div>
+
+  <!-- CAPTURE BUTTONS -->
+  <div id="capture-bar">
+    <button class="capture-btn capture-option" id="btn-voice" title="Voice input">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </button>
+    <button class="capture-btn capture-option" id="btn-type" title="Type task">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+    </button>
+    <button class="capture-btn" id="btn-add" title="Add task">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- DESKTOP WRAPPER (hidden on mobile) -->
+  <div id="desktop-wrapper">
+
+    <!-- SIDEBAR -->
+    <div id="desktop-sidebar">
+      <div class="sb-top">
+        <button class="sb-new-btn" id="sb-new-btn">
+          <span class="sb-plus">+</span>
+          New To-Do
+        </button>
+      </div>
+
+      <!-- Main nav -->
+      <div class="sb-item active" data-desktop-view="today">
+        <div class="sb-item-icon" style="background:#1a3a2a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4caf80" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </div>
+        <span class="sb-item-label">Today</span>
+        <span class="sb-item-count" id="sb-count-today"></span>
+      </div>
+
+      <div class="sb-item" data-desktop-view="inbox">
+        <div class="sb-item-icon" style="background:#2a2a1a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f6c85b" stroke-width="2"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <span class="sb-item-label">Inbox</span>
+        <span class="sb-item-count" id="sb-count-inbox"></span>
+      </div>
+
+      <div class="sb-item" data-desktop-view="upcoming">
+        <div class="sb-item-icon" style="background:#1a1a3a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b9cf6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <span class="sb-item-label">Upcoming</span>
+      </div>
+
+      <div class="sb-item" data-desktop-view="someday">
+        <div class="sb-item-icon" style="background:#2a1a2a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b07ef8" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <span class="sb-item-label">Someday</span>
+      </div>
+
+      <div class="sb-divider"></div>
+
+      <!-- Areas & Projects -->
+      <div id="sb-areas"></div>
+
+      <div class="sb-divider"></div>
+
+      <!-- Lists -->
+      <div class="sb-item" data-desktop-view="lists">
+        <div class="sb-item-icon" style="background:#1a2a2a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ecdc4" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </div>
+        <span class="sb-item-label">Lists</span>
+      </div>
+
+      <!-- Places -->
+      <div class="sb-item" data-desktop-view="places">
+        <div class="sb-item-icon" style="background:#2a1a1a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f06a6a" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <span class="sb-item-label">Places</span>
+      </div>
+
+      <!-- Bottom: Settings -->
+      <div class="sb-bottom">
+        <div class="sb-item" data-desktop-view="settings">
+          <div class="sb-item-icon" style="background:#2a2a2a">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <span class="sb-item-label">Settings</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="desktop-main">
+      <div id="desktop-content-header">
+        <div id="desktop-content-title">Today</div>
+        <div id="desktop-content-subtitle"></div>
+      </div>
+      <div id="desktop-new-task">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <input id="desktop-new-task-input" type="text" placeholder="New to-do">
+      </div>
+      <div id="desktop-scroll"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- TASK DETAIL SHEET -->
+<div id="task-detail-overlay">
+  <div id="task-detail-sheet">
+    <div style="position:relative">
+      <div class="td-handle"></div>
+    </div>
+    <div class="td-header">
+      <button class="td-done-btn" id="td-done-btn">
+        <div class="td-checkbox"></div>
+        <span id="td-done-label">Mark complete</span>
+      </button>
+      <button class="td-close" id="td-close">×</button>
+    </div>
+
+    <div class="td-body">
+      <!-- Spacer -->
+      <div class="td-title-spacer"></div>
+
+      <!-- Title -->
+      <textarea id="td-title" rows="1" placeholder="Task name"></textarea>
+
+      <!-- Due date -->
+      <div class="td-field" id="td-date-field">
+        <div class="td-field-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <span class="td-field-label">Due</span>
+        <span class="td-field-value placeholder" id="td-date-value">No date</span>
+      </div>
+      <div class="td-date-picker" id="td-date-picker">
+        <input type="date" id="td-date-input">
+      </div>
+
+      <!-- Project -->
+      <div class="td-field" id="td-project-field">
+        <div class="td-field-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <span class="td-field-label">Project</span>
+        <span class="td-field-value placeholder" id="td-project-value">No project</span>
+      </div>
+      <div class="td-project-picker" id="td-project-picker"></div>
+
+      <!-- Priority -->
+      <div class="td-priority-row">
+        <div class="td-field-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <span class="td-field-label" style="width:auto;flex:1;color:var(--text-secondary);font-size:14.5px">Priority</span>
+        <label class="td-toggle">
+          <input type="checkbox" id="td-priority-toggle">
+          <div class="td-toggle-track"></div>
+        </label>
+      </div>
+
+      <!-- Notes -->
+      <textarea id="td-notes" placeholder="Add notes…" rows="3"></textarea>
+    </div>
+
+    <div class="td-actions">
+      <button class="td-delete" id="td-delete">Delete task</button>
+      <button class="td-save" id="td-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ADD SHEET -->
+<div id="quick-add-overlay">
+  <div id="quick-add-sheet">
+    <div class="quick-add-handle"></div>
+    <p class="quick-add-label">New Task</p>
+    <input id="quick-add-input" type="text" placeholder="What needs to get done?" autocomplete="off" autocorrect="on">
+    <div class="quick-add-actions">
+      <button class="qa-cancel" id="qa-cancel">Cancel</button>
+      <button class="qa-submit" id="qa-submit" disabled>Add to Inbox</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── UNREGISTER OLD SERVICE WORKERS ───────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  });
+}
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+
+const STORAGE_KEYS = {
+  tasks:      'lo_tasks',
+  inbox:      'lo_inbox',
+  lists:      'lo_lists',
+  projects:   'lo_projects',
+  categories: 'lo_categories',
+  locations:  'lo_locations',
+};
+
+function saveAll() {
+  // Tasks: convert Date objects to ISO strings for storage
+  const tasksForStorage = tasks.map(t => ({
+    ...t,
+    due: t.due ? t.due.toISOString() : null,
+  }));
+  localStorage.setItem(STORAGE_KEYS.tasks,      JSON.stringify(tasksForStorage));
+  localStorage.setItem(STORAGE_KEYS.inbox,      JSON.stringify(inboxItems));
+  localStorage.setItem(STORAGE_KEYS.lists,      JSON.stringify(lists));
+  localStorage.setItem(STORAGE_KEYS.projects,   JSON.stringify(PROJECTS));
+  localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(AREAS));
+  localStorage.setItem(STORAGE_KEYS.locations,  JSON.stringify(locations));
+}
+
+function loadAll() {
+  try {
+    const storedTasks = localStorage.getItem(STORAGE_KEYS.tasks);
+    if (storedTasks) {
+      const parsed = JSON.parse(storedTasks);
+      tasks = parsed.map(t => ({
+        ...t,
+        due: t.due ? new Date(t.due) : null,
+      }));
+    }
+  } catch(e) { console.warn('Could not load tasks', e); }
+
+  try {
+    const storedInbox = localStorage.getItem(STORAGE_KEYS.inbox);
+    if (storedInbox) inboxItems = JSON.parse(storedInbox);
+  } catch(e) { console.warn('Could not load inbox', e); }
+
+  try {
+    const storedLists = localStorage.getItem(STORAGE_KEYS.lists);
+    if (storedLists) lists = JSON.parse(storedLists);
+  } catch(e) { console.warn('Could not load lists', e); }
+
+  try {
+    const storedProjects = localStorage.getItem(STORAGE_KEYS.projects);
+    if (storedProjects) {
+      const p = JSON.parse(storedProjects);
+      PROJECTS.length = 0;
+      p.forEach(item => PROJECTS.push(item));
+    }
+  } catch(e) { console.warn('Could not load projects', e); }
+
+  try {
+    const storedCats = localStorage.getItem(STORAGE_KEYS.categories);
+    if (storedCats) {
+      const c = JSON.parse(storedCats);
+      AREAS.length = 0;
+      c.forEach(item => AREAS.push(item));
+    }
+  } catch(e) { console.warn('Could not load categories', e); }
+
+  try {
+    const storedLocs = localStorage.getItem(STORAGE_KEYS.locations);
+    if (storedLocs) locations = JSON.parse(storedLocs);
+  } catch(e) { console.warn('Could not load locations', e); }
+}
+
+// Auto-save wrapper — call after any data mutation
+function save() { saveAll(); }
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+const CALENDARS = [];
+
+const AREAS = [];
+
+const PROJECTS = [];
+
+const today = new Date();
+
+let tasks = [];
+
+let events = [];
+
+let inboxItems = [];
+
+let locations = [];
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+const isSameDay = (a, b) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth()    === b.getMonth()    &&
+  a.getDate()     === b.getDate();
+
+const fmtTime = dt => dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+const fmtDate = dt => dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+const cal = id => CALENDARS.find(c => c.id === id);
+const proj = id => PROJECTS.find(p => p.id === id);
+const area = id => AREAS.find(a => a.id === id);
+
+// ── WEEK STRIP ────────────────────────────────────────────────────────────────
+
+let selectedDay = new Date(today);
+
+function buildWeekStrip() {
+  const container = document.getElementById('week-days');
+  const dateLabel = document.getElementById('today-date-label');
+
+  // Monday-based week
+  const startOfWeek = new Date(today);
+  const day = today.getDay();
+  const diff = (day === 0) ? -6 : 1 - day;
+  startOfWeek.setDate(today.getDate() + diff);
+
+  const days = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  container.innerHTML = '';
+
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(startOfWeek);
+    dt.setDate(startOfWeek.getDate() + i);
+
+    const isToday = isSameDay(dt, today);
+    const isSelected = isSameDay(dt, selectedDay);
+
+    // dots for events on this day
+    const dayEvents = events.filter(e => isSameDay(e.start, dt));
+    const dayTasks  = tasks.filter(t => t.due && isSameDay(t.due, dt) && !t.done);
+
+    const dotsHTML = [
+      ...new Set(dayEvents.map(e => cal(e.calId)?.color)),
+      ...(dayTasks.length ? ['var(--text-tertiary)'] : [])
+    ].slice(0,3).map(c => `<div class="day-dot" style="background:${c}"></div>`).join('');
+
+    const el = document.createElement('div');
+    el.className = `week-day${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`;
+    el.innerHTML = `
+      <span class="day-label">${days[i]}</span>
+      <span class="day-num">${dt.getDate()}</span>
+      <div class="day-dots">${dotsHTML}</div>
+    `;
+    el.addEventListener('click', () => {
+      selectedDay = dt;
+      buildWeekStrip();
+      renderTodayList();
+    });
+    container.appendChild(el);
+  }
+
+  dateLabel.textContent = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // heading
+  const heading = document.getElementById('today-heading');
+  if (isSameDay(selectedDay, today)) {
+    heading.textContent = 'Today';
+  } else {
+    heading.textContent = selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+}
+
+// ── MONTH CALENDAR DROPDOWN ──────────────────────────────────────────────────
+
+let monthCalDate = new Date(today.getFullYear(), today.getMonth(), 1);
+let monthDropdownOpen = false;
+
+function buildMonthCalendar() {
+  const grid   = document.getElementById('month-grid');
+  const title  = document.getElementById('month-cal-title');
+  grid.innerHTML = '';
+
+  title.textContent = monthCalDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Day labels
+  ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(d => {
+    const lbl = document.createElement('div');
+    lbl.className = 'month-day-label';
+    lbl.textContent = d;
+    grid.appendChild(lbl);
+  });
+
+  const year  = monthCalDate.getFullYear();
+  const month = monthCalDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+
+  // offset: Monday=0
+  let startOffset = firstDay.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
+
+  // Pad from previous month
+  for (let i = 0; i < startOffset; i++) {
+    const dt = new Date(year, month, -startOffset + i + 1);
+    grid.appendChild(makeMonthdayEl(dt, true));
+  }
+
+  // This month
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const dt = new Date(year, month, d);
+    grid.appendChild(makeMonthdayEl(dt, false));
+  }
+
+  // Pad to fill grid
+  const total = startOffset + lastDay.getDate();
+  const remainder = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= remainder; i++) {
+    const dt = new Date(year, month + 1, i);
+    grid.appendChild(makeMonthdayEl(dt, true));
+  }
+}
+
+function makeMonthdayEl(dt, otherMonth) {
+  const el = document.createElement('div');
+  el.className = 'month-day';
+  if (otherMonth) el.classList.add('other-month');
+  if (isSameDay(dt, today)) el.classList.add('today');
+  if (isSameDay(dt, selectedDay)) el.classList.add('selected');
+  el.textContent = dt.getDate();
+
+  // dot if has tasks or events
+  const hasDot = tasks.some(t => t.due && isSameDay(t.due, dt) && !t.done) ||
+                 events.some(e => isSameDay(e.start, dt));
+  if (hasDot && !isSameDay(dt, today)) {
+    const dot = document.createElement('div');
+    dot.className = 'month-day-dot';
+    el.appendChild(dot);
+  }
+
+  el.addEventListener('click', () => {
+    selectedDay = new Date(dt);
+    // If we picked a day in a different month, update the week strip to show that week
+    monthCalDate = new Date(dt.getFullYear(), dt.getMonth(), 1);
+    buildMonthCalendar();
+    buildWeekStrip();
+    renderTodayList();
+    toggleMonthDropdown(false);
+  });
+
+  return el;
+}
+
+function toggleMonthDropdown(force) {
+  const dropdown = document.getElementById('month-dropdown');
+  const btn      = document.getElementById('month-toggle-btn');
+  monthDropdownOpen = force !== undefined ? force : !monthDropdownOpen;
+  dropdown.classList.toggle('open', monthDropdownOpen);
+  btn.classList.toggle('open', monthDropdownOpen);
+  if (monthDropdownOpen) buildMonthCalendar();
+}
+
+document.getElementById('month-toggle-btn').addEventListener('click', () => toggleMonthDropdown());
+
+document.getElementById('month-prev').addEventListener('click', () => {
+  monthCalDate.setMonth(monthCalDate.getMonth() - 1);
+  buildMonthCalendar();
+});
+
+document.getElementById('month-next').addEventListener('click', () => {
+  monthCalDate.setMonth(monthCalDate.getMonth() + 1);
+  buildMonthCalendar();
+});
+
+// ── TODAY LIST ────────────────────────────────────────────────────────────────
+
+function renderTodayList() {
+  const container = document.getElementById('today-list');
+  container.innerHTML = '';
+
+  const dayTasks  = tasks.filter(t => t.due && isSameDay(t.due, selectedDay));
+  const dayEvents = events.filter(e => isSameDay(e.start, selectedDay));
+
+  // Overdue tasks (only on "today" day)
+  if (isSameDay(selectedDay, today)) {
+    const overdue = tasks.filter(t => t.due && t.due < today && !isSameDay(t.due, today) && !t.done);
+    if (overdue.length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'section-header';
+      hdr.style.color = 'var(--overdue)';
+      hdr.textContent = `Overdue · ${overdue.length}`;
+      container.appendChild(hdr);
+      overdue.forEach(t => container.appendChild(makeTaskRow(t, true)));
+    }
+  }
+
+  // Morning events + tasks
+  const morningEvents = dayEvents.filter(e => e.start.getHours() < 12).sort((a,b) => a.start - b.start);
+  const afternoonEvents = dayEvents.filter(e => e.start.getHours() >= 12).sort((a,b) => a.start - b.start);
+
+  // Group: events first, then tasks
+  const allItems = [
+    ...morningEvents,
+    ...dayTasks.filter(t => !t.done),
+    ...afternoonEvents,
+    ...dayTasks.filter(t => t.done),
+  ];
+
+  if (morningEvents.length || (dayTasks.filter(t=>!t.done).length)) {
+    const hdr = document.createElement('div');
+    hdr.className = 'section-header';
+    hdr.textContent = isSameDay(selectedDay, today) ? 'Today' : fmtDate(selectedDay);
+    container.appendChild(hdr);
+  }
+
+  [...morningEvents, ...dayTasks.filter(t=>!t.done)].forEach(item => {
+    if (item.type === 'event') container.appendChild(makeEventRow(item));
+    else container.appendChild(makeTaskRow(item, false));
+  });
+
+  if (afternoonEvents.length) {
+    afternoonEvents.forEach(item => container.appendChild(makeEventRow(item)));
+  }
+
+  // Completed section
+  const done = dayTasks.filter(t => t.done);
+  if (done.length) {
+    const hdr = document.createElement('div');
+    hdr.className = 'section-header';
+    hdr.textContent = `Completed · ${done.length}`;
+    container.appendChild(hdr);
+    done.forEach(t => container.appendChild(makeTaskRow(t, false)));
+  }
+
+  if (container.children.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'inbox-empty';
+    empty.innerHTML = '<p class="inbox-empty-title">Nothing scheduled</p><p>Enjoy your free day.</p>';
+    container.appendChild(empty);
+  }
+}
+
+function makeTaskRow(task, isOverdueSection) {
+  const row = document.createElement('div');
+  row.className = `item-row${isOverdueSection ? ' is-overdue' : ''}`;
+  row.dataset.id = task.id;
+
+  const checkbox = document.createElement('div');
+  checkbox.className = `item-indicator`;
+  checkbox.innerHTML = `<div class="task-checkbox${task.done ? ' checked' : ''}"></div>`;
+
+  const content = document.createElement('div');
+  content.className = 'item-content';
+
+  const p = proj(task.projectId);
+  const timeStr = task.due ? (isOverdueSection ? `Due ${fmtDate(task.due)}` : '') : '';
+
+  content.innerHTML = `
+    <div class="item-title${task.done ? ' completed' : ''}${isOverdueSection ? ' overdue' : ''}">${task.title}</div>
+    <div class="item-meta">
+      ${timeStr ? `<span class="item-time${isOverdueSection ? ' overdue' : ''}">${timeStr}</span>` : ''}
+      ${p ? `<span class="item-project">${p.name}</span>` : ''}
+    </div>
+  `;
+
+  const right = document.createElement('div');
+  right.className = 'item-right';
+  if (task.priority && !task.done) {
+    right.innerHTML = `<div class="item-flag"></div>`;
+  }
+
+  // Swipe labels
+  const labelComplete = document.createElement('span');
+  labelComplete.className = 'swipe-label left';
+  labelComplete.textContent = 'Done';
+
+  const labelSchedule = document.createElement('span');
+  labelSchedule.className = 'swipe-label right';
+  labelSchedule.textContent = 'Later';
+
+  row.appendChild(labelComplete);
+  row.appendChild(labelSchedule);
+  row.appendChild(checkbox);
+  row.appendChild(content);
+  row.appendChild(right);
+
+  // Checkbox tap
+  checkbox.addEventListener('click', (e) => {
+    e.stopPropagation();
+    task.done = !task.done;
+    save();
+    buildWeekStrip();
+    renderTodayList();
+  });
+
+  // Row tap → open detail
+  row.addEventListener('click', (e) => {
+    if (e.target.closest('.item-indicator')) return;
+    openTaskDetail(task);
+  });
+
+  // Swipe gesture
+  setupSwipe(row, task);
+
+  return row;
+}
+
+function makeEventRow(event) {
+  const row = document.createElement('div');
+  row.className = 'item-row is-event';
+
+  const c = cal(event.calId);
+  const dotEl = document.createElement('div');
+  dotEl.className = 'item-indicator';
+  dotEl.innerHTML = `<div class="cal-dot" style="background:${c?.color || '#ccc'}"></div>`;
+
+  const content = document.createElement('div');
+  content.className = 'item-content';
+  content.innerHTML = `
+    <div class="item-title">${event.title}</div>
+    <div class="item-meta">
+      <span class="item-time">${fmtTime(event.start)} – ${fmtTime(event.end)}</span>
+      <span class="item-project">${c?.name || ''}</span>
+    </div>
+  `;
+
+  row.appendChild(dotEl);
+  row.appendChild(content);
+  return row;
+}
+
+// ── SWIPE GESTURES ────────────────────────────────────────────────────────────
+
+function setupSwipe(row, task) {
+  let startX = 0, startY = 0, dx = 0;
+  let isTracking = false;
+
+  const labelLeft  = row.querySelector('.swipe-label.left');
+  const labelRight = row.querySelector('.swipe-label.right');
+
+  row.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dx = 0;
+    isTracking = true;
+  }, { passive: true });
+
+  row.addEventListener('touchmove', e => {
+    if (!isTracking) return;
+    const currX = e.touches[0].clientX;
+    const currY = e.touches[0].clientY;
+    dx = currX - startX;
+    const dy = currY - startY;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dx) < 10) { isTracking = false; return; }
+    if (Math.abs(dx) > 8) e.preventDefault();
+
+    const clamped = Math.max(-100, Math.min(100, dx));
+    row.style.transform = `translateX(${clamped}px)`;
+
+    if (dx > 30) {
+      row.classList.add('swiping-complete');
+      row.classList.remove('swiping-schedule');
+      labelLeft.style.opacity = Math.min(1, (dx - 30) / 40);
+    } else if (dx < -30) {
+      row.classList.add('swiping-schedule');
+      row.classList.remove('swiping-complete');
+      labelRight.style.opacity = Math.min(1, (-dx - 30) / 40);
+    } else {
+      row.classList.remove('swiping-complete', 'swiping-schedule');
+      labelLeft.style.opacity = 0;
+      labelRight.style.opacity = 0;
+    }
+  }, { passive: false });
+
+  row.addEventListener('touchend', () => {
+    isTracking = false;
+    labelLeft.style.opacity = 0;
+    labelRight.style.opacity = 0;
+    row.classList.remove('swiping-complete', 'swiping-schedule');
+
+    if (dx > 60) {
+      // Complete
+      row.style.transform = 'translateX(0)';
+      task.done = !task.done;
+      save();
+      buildWeekStrip();
+      renderTodayList();
+    } else if (dx < -60) {
+      // Reschedule (UI stub)
+      row.style.transform = 'translateX(0)';
+      alert('Reschedule: coming soon!');
+    } else {
+      row.style.transform = 'translateX(0)';
+    }
+  });
+}
+
+// ── INBOX ─────────────────────────────────────────────────────────────────────
+
+function renderInbox() {
+  const container = document.getElementById('inbox-list');
+  container.innerHTML = '';
+
+  if (inboxItems.length === 0) {
+    container.innerHTML = `
+      <div class="inbox-empty">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.4">
+          <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        <p class="inbox-empty-title">Inbox is empty</p>
+        <p>Tap + or the mic to quickly capture a task or idea.</p>
+      </div>`;
+    return;
+  }
+
+  const hdr = document.createElement('div');
+  hdr.className = 'section-header';
+  hdr.textContent = `Inbox · ${inboxItems.length}`;
+  container.appendChild(hdr);
+
+  inboxItems.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <div class="item-indicator"><div class="task-checkbox"></div></div>
+      <div class="item-content">
+        <div class="item-title">${item.title}</div>
+        <div class="item-meta"><span class="item-time" style="color:var(--text-tertiary);font-size:11.5px">Inbox</span></div>
+      </div>`;
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.item-indicator')) return;
+      openTaskDetail(item);
+    });
+    container.appendChild(row);
+  });
+}
+
+// ── PROJECTS ──────────────────────────────────────────────────────────────────
+
+// ── LISTS ─────────────────────────────────────────────────────────────────────
+
+let lists = [];
+
+function showListLinkPicker(list, sectionEl) {
+  // Remove any existing picker
+  const existing = document.getElementById('list-link-picker');
+  if (existing) existing.remove();
+
+  const picker = document.createElement('div');
+  picker.id = 'list-link-picker';
+  picker.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;
+    display:flex;align-items:flex-end;`;
+
+  const sheet = document.createElement('div');
+  sheet.style.cssText = `
+    width:100%;max-width:430px;margin:0 auto;
+    background:var(--surface-raised);border-radius:20px 20px 0 0;
+    padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+    animation:slideUp 0.25s ease;`;
+
+  let html = `
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:12px">Link "${list.name}" to</div>
+    <div class="td-project-option${!list.linkedCategoryId && !list.linkedProjectId ? ' selected' : ''}" data-cat="" data-proj="">
+      <div class="td-project-dot" style="background:var(--text-tertiary)"></div>No link
+    </div>`;
+
+  AREAS.forEach(a => {
+    const aProjects = PROJECTS.filter(p => p.areaId === a.id);
+    html += `<div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-tertiary);padding:12px 8px 4px">${a.name}</div>`;
+    html += `<div class="td-project-option${list.linkedCategoryId === a.id && !list.linkedProjectId ? ' selected' : ''}" data-cat="${a.id}" data-proj="">
+      <div class="td-project-dot" style="background:${a.color}"></div>${a.name} (category)
+    </div>`;
+    aProjects.forEach(p => {
+      html += `<div class="td-project-option${list.linkedProjectId === p.id ? ' selected' : ''}" data-cat="" data-proj="${p.id}" style="padding-left:28px">
+        <div class="td-project-dot" style="background:${a.color}"></div>${p.name}
+      </div>`;
+    });
+  });
+
+  sheet.innerHTML = html;
+  picker.appendChild(sheet);
+  document.body.appendChild(picker);
+
+  sheet.querySelectorAll('.td-project-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      list.linkedCategoryId = opt.dataset.cat || null;
+      list.linkedProjectId  = opt.dataset.proj || null;
+      save();
+      picker.remove();
+      renderLists();
+    });
+  });
+
+  picker.addEventListener('click', e => { if (e.target === picker) picker.remove(); });
+}
+
+function navigateToList(listId) {
+  // Switch to Lists tab
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const tab = document.querySelector('[data-view="lists"]');
+  tab.classList.add('active');
+  document.getElementById('view-lists').classList.add('active');
+  renderLists();
+  // After render, find and open the target list section
+  requestAnimationFrame(() => {
+    const sections = document.querySelectorAll('#lists-list .area-section');
+    sections.forEach((section, i) => {
+      if (lists[i] && lists[i].id === listId) {
+        const itemsDiv = section.querySelector('.area-projects');
+        const chevron  = section.querySelector('.area-chevron');
+        if (itemsDiv && !itemsDiv.classList.contains('open')) {
+          itemsDiv.classList.add('open');
+          if (chevron) chevron.classList.add('open');
+        }
+        // resize note textareas
+        itemsDiv && itemsDiv.querySelectorAll('.list-item-note').forEach(ta => {
+          ta.style.height = 'auto';
+          ta.style.height = ta.scrollHeight + 'px';
+        });
+        // scroll into view
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+}
+
+function showItemEditSheet(item, onDone) {
+  const existing = document.getElementById('item-edit-sheet');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'item-edit-sheet';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:flex-end;';
+
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'width:100%;max-width:430px;margin:0 auto;background:var(--surface-raised);border-radius:20px 20px 0 0;padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 20px);animation:slideUp 0.25s ease;';
+
+  sheet.innerHTML = `
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:12px">Edit Item</div>
+    <input id="edit-item-name" type="text" value="" placeholder="Item name…" autocomplete="off"
+      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:DM Sans,sans-serif;font-size:18px;color:var(--text-primary);outline:none;box-sizing:border-box;margin-bottom:10px">
+    <input id="edit-item-note" type="text" value="" placeholder="Add a note…" autocomplete="off"
+      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:DM Sans,sans-serif;font-size:14px;color:var(--text-secondary);outline:none;box-sizing:border-box;margin-bottom:16px">
+    <div style="display:flex;gap:10px">
+      <button id="edit-item-cancel" style="flex:1;padding:12px;background:var(--surface);color:var(--text-secondary);border:1px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:15px;font-weight:500;cursor:pointer">Cancel</button>
+      <button id="edit-item-done" style="flex:1;padding:12px;background:var(--accent);color:white;border:none;border-radius:10px;font-family:DM Sans,sans-serif;font-size:15px;font-weight:500;cursor:pointer">Done</button>
+    </div>`;
+
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+
+  const nameInput = sheet.querySelector('#edit-item-name');
+  const noteInput = sheet.querySelector('#edit-item-note');
+  nameInput.value = item.text;
+  noteInput.value = item.note || '';
+  nameInput.focus();
+  nameInput.select();
+
+  const close = () => overlay.remove();
+
+  sheet.querySelector('#edit-item-done').addEventListener('click', () => {
+    const newText = nameInput.value.trim();
+    if (newText) item.text = newText;
+    item.note = noteInput.value.trim();
+    save();
+    close();
+    if (onDone) onDone();
+  });
+
+  sheet.querySelector('#edit-item-cancel').addEventListener('click', close);
+
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) close();
+  });
+}
+
+function showItemLocationPicker(item, onDone) {
+  if (!item.locationIds) item.locationIds = [];
+  const existing = document.getElementById('location-picker');
+  if (existing) existing.remove();
+
+  const picker = document.createElement('div');
+  picker.id = 'location-picker';
+  picker.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:flex-end;';
+
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'width:100%;max-width:430px;margin:0 auto;background:var(--surface-raised);border-radius:20px 20px 0 0;padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 20px);animation:slideUp 0.25s ease;';
+
+  const rebuildSheet = () => {
+    let html = `
+      <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px"></div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:12px">Locations for "${item.text}"</div>`;
+
+    locations.forEach(loc => {
+      const active = item.locationIds.includes(loc.id);
+      html += `<div class="td-project-option loc-toggle" data-loc="${loc.id}" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <div style="width:18px;height:18px;border-radius:4px;border:1.5px solid ${active ? '#f06a6a' : 'var(--border)'};background:${active ? '#f06a6a' : 'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${active ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+        </div>
+        <span>${loc.name}</span>
+      </div>`;
+    });
+
+    html += `<div style="padding:12px 0 4px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="new-location-input" type="text" placeholder="New place name…" autocomplete="off"
+          style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:DM Sans,sans-serif;font-size:14px;color:var(--text-primary);outline:none">
+        <button id="new-location-add" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 14px;font-family:DM Sans,sans-serif;font-size:13px;font-weight:500;cursor:pointer">Add</button>
+      </div>
+    </div>
+    <button id="loc-picker-done" style="width:100%;margin-top:12px;padding:12px;background:var(--accent);color:white;border:none;border-radius:10px;font-family:DM Sans,sans-serif;font-size:15px;font-weight:500;cursor:pointer">Done</button>`;
+
+    sheet.innerHTML = html;
+
+    // Toggle location on/off
+    sheet.querySelectorAll('.loc-toggle').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const locId = opt.dataset.loc;
+        const idx = item.locationIds.indexOf(locId);
+        if (idx >= 0) item.locationIds.splice(idx, 1);
+        else item.locationIds.push(locId);
+        save();
+        rebuildSheet();
+      });
+    });
+
+    // Add new location
+    const locInput = sheet.querySelector('#new-location-input');
+    const commitNew = () => {
+      const name = locInput.value.trim();
+      if (!name) return;
+      const newLoc = { id: 'loc' + Date.now(), name };
+      locations.push(newLoc);
+      item.locationIds.push(newLoc.id);
+      save();
+      rebuildSheet();
+    };
+    sheet.querySelector('#new-location-add').addEventListener('click', commitNew);
+    locInput.addEventListener('keydown', e => { if (e.key === 'Enter') commitNew(); });
+
+    // Done button
+    sheet.querySelector('#loc-picker-done').addEventListener('click', () => {
+      picker.remove();
+      if (onDone) onDone();
+    });
+  };
+
+  picker.appendChild(sheet);
+  document.body.appendChild(picker);
+  rebuildSheet();
+
+  picker.addEventListener('click', e => {
+    if (e.target === picker) {
+      picker.remove();
+      if (onDone) onDone();
+    }
+  });
+}
+
+function renderPlaces() {
+  const container = document.getElementById('places-list');
+  container.innerHTML = '';
+
+  const hdrRow = document.createElement('div');
+  hdrRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:20px 20px 8px';
+  hdrRow.innerHTML = `
+    <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-tertiary)">Places</span>
+    <button id="add-place-btn" style="background:none;border:none;color:var(--accent);font-family:DM Sans,sans-serif;font-size:13px;font-weight:500;cursor:pointer;padding:4px 0">+ New place</button>`;
+  container.appendChild(hdrRow);
+
+  // Wire add place button before early return
+  document.getElementById('add-place-btn').addEventListener('click', () => {
+    let inlineInput = document.getElementById('new-place-inline');
+    if (inlineInput) { document.getElementById('new-place-name').focus(); return; }
+
+    inlineInput = document.createElement('div');
+    inlineInput.id = 'new-place-inline';
+    inlineInput.style.cssText = 'padding:8px 20px 12px;display:flex;gap:8px;align-items:center';
+    inlineInput.innerHTML = `
+      <input id="new-place-name" type="text" placeholder="Place name…" autocomplete="off"
+        style="flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;
+               padding:8px 12px;font-family:DM Sans,sans-serif;font-size:14px;color:var(--text-primary);outline:none">
+      <button id="new-place-save" style="background:var(--accent);color:white;border:none;border-radius:8px;
+              padding:8px 14px;font-family:DM Sans,sans-serif;font-size:13px;font-weight:500;cursor:pointer">Add</button>
+      <button id="new-place-cancel" style="background:none;border:none;color:var(--text-secondary);
+              font-family:DM Sans,sans-serif;font-size:13px;cursor:pointer">Cancel</button>`;
+
+    hdrRow.insertAdjacentElement('afterend', inlineInput);
+    document.getElementById('new-place-name').focus();
+
+    const commitNewPlace = () => {
+      const name = document.getElementById('new-place-name').value.trim();
+      if (name) {
+        locations.push({ id: 'loc' + Date.now(), name });
+        save();
+      }
+      renderPlaces();
+    };
+
+    document.getElementById('new-place-save').addEventListener('click', commitNewPlace);
+    document.getElementById('new-place-cancel').addEventListener('click', renderPlaces);
+    document.getElementById('new-place-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') commitNewPlace();
+      if (e.key === 'Escape') renderPlaces();
+    });
+  });
+
+  if (locations.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'inbox-empty';
+    empty.innerHTML = '<p class="inbox-empty-title">No places yet</p><p>Add locations to list items, then see everything grouped by place here.</p>';
+    container.appendChild(empty);
+    return;
+  }
+
+  locations.forEach(loc => {
+    // Find all items across all lists that have this location
+    const taggedItems = [];
+    lists.forEach(list => {
+      list.items.forEach(item => {
+        if (item.locationIds && item.locationIds.includes(loc.id) && !item.checked) {
+          taggedItems.push({ item, listName: list.name, listId: list.id });
+        }
+      });
+    });
+
+    const section = document.createElement('div');
+    section.className = 'area-section';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'area-header';
+    hdr.innerHTML = `
+      <div class="area-header-left" style="gap:6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f06a6a" stroke-width="2" style="flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span class="area-name">${loc.name}</span>
+        <span class="area-count" style="margin-left:4px">${taggedItems.length} item${taggedItems.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="place-rename-btn" style="background:none;border:none;color:var(--text-tertiary);font-size:11px;cursor:pointer;font-family:DM Sans,sans-serif;padding:2px 6px;border-radius:6px;border:1px solid var(--border)">Rename</button>
+        <button class="place-delete-btn" style="background:none;border:none;color:var(--text-tertiary);font-size:11px;cursor:pointer;font-family:DM Sans,sans-serif;padding:2px 6px;border-radius:6px;border:1px solid var(--border)">Delete</button>
+        <svg class="area-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`;
+
+    const itemsDiv = document.createElement('div');
+    itemsDiv.className = 'area-projects';
+
+    if (taggedItems.length === 0) {
+      const emptyRow = document.createElement('div');
+      emptyRow.style.cssText = 'padding:12px 20px;color:var(--text-tertiary);font-size:14px';
+      emptyRow.textContent = 'No unchecked items at this place';
+      itemsDiv.appendChild(emptyRow);
+    } else {
+      taggedItems.forEach(({ item, listName, listId }) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:6px 20px;display:flex;align-items:center;gap:12px';
+
+        const cb = document.createElement('div');
+        cb.className = 'task-checkbox';
+        cb.style.cssText = 'flex-shrink:0;cursor:pointer';
+        cb.addEventListener('click', e => {
+          e.stopPropagation();
+          item.checked = true;
+          save();
+          renderPlaces();
+        });
+
+        const textDiv = document.createElement('div');
+        textDiv.style.cssText = 'flex:1;min-width:0';
+        textDiv.innerHTML = `<div style="font-size:20px;color:var(--text-primary)">${item.text}</div>
+          <div style="font-size:12px;color:var(--text-tertiary);margin-top:1px">${listName}</div>`;
+
+        row.appendChild(cb);
+        row.appendChild(textDiv);
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => navigateToList(listId));
+        itemsDiv.appendChild(row);
+      });
+    }
+
+    hdr.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      hdr.querySelector('.area-chevron').classList.toggle('open');
+      itemsDiv.classList.toggle('open');
+    });
+
+    hdr.querySelector('.place-rename-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const newName = prompt('Rename place:', loc.name);
+      if (newName && newName.trim()) {
+        loc.name = newName.trim();
+        save();
+        renderPlaces();
+      }
+    });
+
+    hdr.querySelector('.place-delete-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      if (!confirm('Delete "' + loc.name + '"? Items will be untagged but not deleted.')) return;
+      lists.forEach(l => l.items.forEach(i => {
+        if (i.locationIds) {
+          const idx = i.locationIds.indexOf(loc.id);
+          if (idx >= 0) i.locationIds.splice(idx, 1);
+        }
+      }));
+      locations.splice(locations.indexOf(loc), 1);
+      save();
+      renderPlaces();
+    });
+
+    section.appendChild(hdr);
+    section.appendChild(itemsDiv);
+    container.appendChild(section);
+  });
+}
+
+function renderLists() {
+  const container = document.getElementById('lists-list');
+  container.innerHTML = '';
+
+  const hdrRow = document.createElement('div');
+  hdrRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:20px 20px 8px';
+  hdrRow.innerHTML = `
+    <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-tertiary)">Lists</span>
+    <button id="add-list-btn" style="background:none;border:none;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;padding:4px 0">+ New list</button>`;
+  container.appendChild(hdrRow);
+
+  // wire new list button — must be before the early return for empty state
+  document.getElementById('add-list-btn').addEventListener('click', () => {
+    const hdrRow = document.querySelector('#lists-list > div:first-child');
+    let inlineInput = document.getElementById('new-list-inline');
+    if (inlineInput) { inlineInput.focus(); return; }
+
+    inlineInput = document.createElement('div');
+    inlineInput.id = 'new-list-inline';
+    inlineInput.style.cssText = 'padding:8px 20px 12px;display:flex;gap:8px;align-items:center';
+    inlineInput.innerHTML = `
+      <input id="new-list-name" type="text" placeholder="List name…" autocomplete="off"
+        style="flex:1;background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;
+               padding:8px 12px;font-family:DM Sans,sans-serif;font-size:14px;color:var(--text-primary);outline:none">
+      <button id="new-list-save" style="background:var(--accent);color:white;border:none;border-radius:8px;
+              padding:8px 14px;font-family:DM Sans,sans-serif;font-size:13px;font-weight:500;cursor:pointer">Add</button>
+      <button id="new-list-cancel" style="background:none;border:none;color:var(--text-secondary);
+              font-family:DM Sans,sans-serif;font-size:13px;cursor:pointer">Cancel</button>`;
+
+    hdrRow.insertAdjacentElement('afterend', inlineInput);
+    document.getElementById('new-list-name').focus();
+
+    const commitNewList = () => {
+      const name = document.getElementById('new-list-name').value.trim();
+      if (name) {
+        lists.push({ id: 'l' + Date.now(), name, items: [], linkedCategoryId: null, linkedProjectId: null });
+        save();
+      }
+      renderLists();
+    };
+
+    document.getElementById('new-list-save').addEventListener('click', commitNewList);
+    document.getElementById('new-list-cancel').addEventListener('click', renderLists);
+    document.getElementById('new-list-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') commitNewList();
+      if (e.key === 'Escape') renderLists();
+    });
+  });
+
+  if (lists.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'inbox-empty';
+    empty.innerHTML = '<p class="inbox-empty-title">No lists yet</p><p>Tap + New list to create a grocery list, notes, or anything else.</p>';
+    container.appendChild(empty);
+    return;
+  }
+
+  lists.forEach(list => {
+    const section = document.createElement('div');
+    section.className = 'area-section';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'area-header';
+
+    // build linked label
+    let linkedLabel = '';
+    if (list.linkedProjectId) {
+      const lp = proj(list.linkedProjectId);
+      if (lp) linkedLabel = `<span style="font-size:11px;color:var(--accent);margin-left:6px">${lp.name}</span>`;
+    } else if (list.linkedCategoryId) {
+      const lc = AREAS.find(a => a.id === list.linkedCategoryId);
+      if (lc) linkedLabel = `<span style="font-size:11px;color:var(--text-tertiary);margin-left:6px">${lc.name}</span>`;
+    }
+
+    const uncheckedItems = list.items.filter(i => !i.checked);
+    const checkedItems = list.items.filter(i => i.checked);
+
+    hdr.innerHTML = `
+      <div class="area-header-left" style="gap:4px">
+        <span class="area-name">${list.name}</span>
+        ${linkedLabel}
+        <span class="area-count" style="margin-left:4px">${uncheckedItems.length}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="list-link-btn" data-id="${list.id}" style="background:none;border:none;color:var(--text-tertiary);font-size:11px;cursor:pointer;font-family:DM Sans,sans-serif;padding:2px 6px;border-radius:6px;border:1px solid var(--border)">Link</button>
+        <svg class="area-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`;
+
+    const itemsDiv = document.createElement('div');
+    itemsDiv.className = 'area-projects';
+
+    // Helper to build a list item row
+    const buildItemRow = (item) => {
+      // Ensure item has locationIds array
+      if (!item.locationIds) item.locationIds = [];
+
+      const row = document.createElement('div');
+      row.className = 'project-row';
+      row.style.cssText = 'padding-left:20px;flex-direction:column;align-items:stretch;gap:0';
+
+      const mainRow = document.createElement('div');
+      mainRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:2px 0';
+
+      // Build location tags
+      const locTags = item.locationIds.map(lid => {
+        const loc = locations.find(l => l.id === lid);
+        return loc ? `<span style="font-size:10px;color:#f06a6a;background:rgba(240,106,106,0.12);padding:1px 6px;border-radius:4px;white-space:nowrap">${loc.name}</span>` : '';
+      }).filter(Boolean).join('');
+
+      mainRow.innerHTML = `
+        <div class="item-indicator" style="margin-top:0;flex-shrink:0"><div class="task-checkbox${item.checked ? ' checked' : ''}"></div></div>
+        <div class="item-text-col" style="min-width:0">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="project-name" style="font-size:22px;${item.checked ? 'text-decoration:line-through;color:var(--text-tertiary)' : ''}">${item.text}</span>
+            ${item.note ? `<button class="item-note-toggle" style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text-secondary);flex-shrink:0;display:flex;align-items:center;transition:transform 0.2s" title="Toggle note">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l10 7-10 7z"/></svg>
+            </button>` : ''}
+          </div>
+          ${locTags ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">${locTags}</div>` : ''}
+        </div>
+        <div style="flex:1"></div>
+        <button class="item-place-btn" style="background:none;border:none;cursor:pointer;padding:4px;color:${item.locationIds.length ? '#f06a6a' : 'var(--text-tertiary)'};flex-shrink:0;display:flex;align-items:center" title="Set locations">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </button>
+        <button class="item-edit-btn" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-tertiary);flex-shrink:0;display:flex;align-items:center" title="Edit item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>`;
+
+      // Collapsible note area (hidden by default, only exists if note is non-empty)
+      const noteRow = document.createElement('div');
+      noteRow.className = 'item-note-row';
+      noteRow.style.cssText = 'display:none;padding:2px 0 6px 32px;font-size:14px;color:var(--text-secondary);line-height:1.4';
+      noteRow.textContent = item.note || '';
+
+      // Note disclosure triangle toggle
+      const noteToggle = mainRow.querySelector('.item-note-toggle');
+      if (noteToggle) {
+        noteToggle.addEventListener('click', e => {
+          e.stopPropagation();
+          const open = noteRow.style.display !== 'none';
+          noteRow.style.display = open ? 'none' : 'block';
+          noteToggle.style.transform = open ? '' : 'rotate(90deg)';
+        });
+      }
+
+      // Checkbox — animate out instead of re-rendering
+      mainRow.querySelector('.task-checkbox').addEventListener('click', e => {
+        e.stopPropagation();
+        item.checked = !item.checked;
+        save();
+        row.style.transition = 'opacity 0.25s, max-height 0.25s';
+        row.style.opacity = '0';
+        row.style.maxHeight = row.offsetHeight + 'px';
+        row.style.overflow = 'hidden';
+        setTimeout(() => {
+          row.style.maxHeight = '0';
+        }, 50);
+        setTimeout(() => {
+          row.remove();
+          const countEl = hdr.querySelector('.area-count');
+          if (countEl) countEl.textContent = list.items.filter(i => !i.checked).length;
+          updateCheckedSection();
+        }, 300);
+      });
+
+      mainRow.querySelector('.item-place-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        showItemLocationPicker(item, () => renderLists());
+      });
+
+      // Edit button — opens bottom sheet for name + note editing
+      mainRow.querySelector('.item-edit-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        showItemEditSheet(item, () => {
+          // Update display in-place
+          mainRow.querySelector('.project-name').textContent = item.text;
+          mainRow.querySelector('.project-name').style.cssText = 'font-size:22px;' + (item.checked ? 'text-decoration:line-through;color:var(--text-tertiary)' : '');
+          // Update note row and toggle visibility
+          noteRow.textContent = item.note || '';
+          if (item.note) {
+            if (!mainRow.querySelector('.item-note-toggle')) {
+              // Insert triangle next to name text
+              const tri = document.createElement('button');
+              tri.className = 'item-note-toggle';
+              tri.style.cssText = 'background:none;border:none;cursor:pointer;padding:2px;color:var(--text-secondary);flex-shrink:0;display:flex;align-items:center;transition:transform 0.2s';
+              tri.title = 'Toggle note';
+              tri.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5l10 7-10 7z"/></svg>';
+              tri.addEventListener('click', ev => {
+                ev.stopPropagation();
+                const open = noteRow.style.display !== 'none';
+                noteRow.style.display = open ? 'none' : 'block';
+                tri.style.transform = open ? '' : 'rotate(90deg)';
+              });
+              mainRow.querySelector('.project-name').after(tri);
+            }
+          } else {
+            // Remove triangle if note was cleared
+            const tri = mainRow.querySelector('.item-note-toggle');
+            if (tri) tri.remove();
+            noteRow.style.display = 'none';
+          }
+        });
+      });
+
+      row.appendChild(mainRow);
+      row.appendChild(noteRow);
+      return row;
+    };
+
+    // Render unchecked items
+    uncheckedItems.forEach(item => itemsDiv.appendChild(buildItemRow(item)));
+
+    // add item row — inline input, stays open after adding
+    const addRow = document.createElement('div');
+    addRow.className = 'project-row';
+    addRow.style.cssText = 'padding-left:20px;gap:8px;cursor:pointer;color:var(--text-tertiary)';
+    addRow.innerHTML = `<span class="add-item-label" style="font-size:14px">+ Add item</span>
+      <input class="add-item-input" type="text" placeholder="New item…" autocomplete="off"
+        style="display:none;flex:1;background:none;border:none;outline:none;font-family:DM Sans,sans-serif;font-size:21px;color:var(--text-primary);padding:0">`;
+
+    const addLabel = addRow.querySelector('.add-item-label');
+    const addInput = addRow.querySelector('.add-item-input');
+    let addItemCommitting = false;
+
+    addLabel.addEventListener('click', () => {
+      addLabel.style.display = 'none';
+      addInput.style.display = 'block';
+      addInput.focus();
+    });
+
+    const commitAddItem = () => {
+      if (addItemCommitting) return;
+      addItemCommitting = true;
+      const text = addInput.value.trim();
+      if (text) {
+        list.items.push({ text, checked: false, note: '', locationIds: [] });
+        save();
+        const newRow = buildItemRow(list.items[list.items.length - 1]);
+        itemsDiv.insertBefore(newRow, addRow);
+        const countEl = hdr.querySelector('.area-count');
+        if (countEl) countEl.textContent = list.items.filter(i => !i.checked).length;
+        addInput.value = '';
+        addInput.focus();
+      } else {
+        addInput.style.display = 'none';
+        addLabel.style.display = '';
+        addInput.value = '';
+      }
+      addItemCommitting = false;
+    };
+
+    addInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commitAddItem(); }
+      if (e.key === 'Escape') { addInput.style.display='none'; addLabel.style.display=''; addInput.value=''; }
+    });
+    addInput.addEventListener('blur', commitAddItem);
+
+    itemsDiv.appendChild(addRow);
+
+    // Checked items — collapsible section (rebuilt dynamically)
+    const checkedToggle = document.createElement('div');
+    const checkedDiv = document.createElement('div');
+    checkedDiv.style.display = 'none';
+    let checkedOpen = false;
+
+    const updateCheckedSection = () => {
+      const currentChecked = list.items.filter(i => i.checked);
+      if (currentChecked.length === 0) {
+        checkedToggle.style.display = 'none';
+        checkedDiv.style.display = 'none';
+        return;
+      }
+      checkedToggle.style.display = '';
+      checkedToggle.style.cssText = 'padding:8px 20px;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text-tertiary);font-size:13px;font-family:DM Sans,sans-serif';
+      checkedToggle.innerHTML = `<svg class="checked-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s;${checkedOpen ? 'transform:rotate(90deg)' : ''}"><polyline points="9 18 15 12 9 6"/></svg>
+        <span>${checkedOpen ? 'Hide' : 'Show'} checked items · ${currentChecked.length}</span>`;
+      checkedDiv.innerHTML = '';
+      currentChecked.forEach(item => checkedDiv.appendChild(buildItemRow(item)));
+      checkedDiv.style.display = checkedOpen ? 'block' : 'none';
+    };
+
+    checkedToggle.addEventListener('click', () => {
+      checkedOpen = !checkedOpen;
+      updateCheckedSection();
+      if (checkedOpen) {
+        checkedDiv.querySelectorAll('.list-item-note').forEach(ta => {
+          ta.style.height = 'auto';
+          ta.style.height = ta.scrollHeight + 'px';
+        });
+      }
+    });
+
+    itemsDiv.appendChild(checkedToggle);
+    itemsDiv.appendChild(checkedDiv);
+    updateCheckedSection();
+
+    hdr.addEventListener('click', (e) => {
+      if (e.target.closest('.list-link-btn')) return;
+      hdr.querySelector('.area-chevron').classList.toggle('open');
+      itemsDiv.classList.toggle('open');
+      if (itemsDiv.classList.contains('open')) {
+        itemsDiv.querySelectorAll('.list-item-note').forEach(ta => {
+          ta.style.height = 'auto';
+          ta.style.height = ta.scrollHeight + 'px';
+        });
+      }
+    });
+
+    hdr.querySelector('.list-link-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      showListLinkPicker(list, section);
+    });
+
+    section.appendChild(hdr);
+    section.appendChild(itemsDiv);
+    container.appendChild(section);
+  });
+
+}
+
+// ── CATEGORY / PROJECT EDIT SHEET ─────────────────────────────────────────────
+
+const CAT_COLORS = ['#5b9cf6','#f0883e','#4caf80','#b07ef8','#f06a6a','#f6c85b','#4ecdc4','#e84393'];
+
+function openCategorySheet(existing) {
+  // existing = null → create new, else edit
+  const isNew = !existing;
+  const data  = existing || { id: null, name: '', color: CAT_COLORS[0] };
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:600;display:flex;align-items:flex-end';
+
+  const sheet = document.createElement('div');
+  sheet.style.cssText = `width:100%;max-width:430px;margin:0 auto;background:var(--surface);
+    border-radius:20px 20px 0 0;padding:20px 20px calc(env(safe-area-inset-bottom,0px)+20px);
+    animation:slideUp 0.28s cubic-bezier(0.32,0.72,0,1)`;
+
+  const colorSwatches = CAT_COLORS.map(c =>
+    `<div class="color-swatch${c===data.color?' selected':''}" data-color="${c}"
+      style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;
+             flex-shrink:0;border:2px solid ${c===data.color?'white':'transparent'};
+             transition:border-color 0.15s"></div>`
+  ).join('');
+
+  sheet.innerHTML = `
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;
+                color:var(--text-tertiary);margin-bottom:12px">${isNew?'New Category':'Edit Category'}</div>
+    <input id="cat-name-input" type="text" value="${data.name}" placeholder="Category name"
+      style="width:100%;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;
+             padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--text-primary);
+             outline:none;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;
+                color:var(--text-tertiary);margin-bottom:10px">Color</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">${colorSwatches}</div>
+    <div style="display:flex;gap:10px;${isNew?'':'justify-content:space-between'}">
+      ${!isNew ? `<button id="cat-delete-btn" style="background:none;border:none;color:var(--overdue);
+        font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;padding:8px 0">Delete category</button>` : ''}
+      <div style="display:flex;gap:10px;margin-left:auto">
+        <button id="cat-cancel-btn" style="background:none;border:none;color:var(--text-secondary);
+          font-family:'DM Sans',sans-serif;font-size:15px;cursor:pointer;padding:10px 4px">Cancel</button>
+        <button id="cat-save-btn" style="background:var(--accent);color:#0a1f14;border:none;border-radius:10px;
+          padding:10px 22px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer">
+          ${isNew?'Add':'Save'}</button>
+      </div>
+    </div>`;
+
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+  document.getElementById('cat-name-input').focus();
+
+  // color picker
+  let selectedColor = data.color;
+  sheet.querySelectorAll('.color-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      sheet.querySelectorAll('.color-swatch').forEach(s => {
+        s.style.borderColor = 'transparent';
+      });
+      sw.style.borderColor = 'white';
+      selectedColor = sw.dataset.color;
+    });
+  });
+
+  document.getElementById('cat-cancel-btn').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+
+  document.getElementById('cat-save-btn').addEventListener('click', () => {
+    const name = document.getElementById('cat-name-input').value.trim();
+    if (!name) { document.getElementById('cat-name-input').focus(); return; }
+    if (isNew) {
+      AREAS.push({ id: 'a'+Date.now(), name, color: selectedColor });
+    } else {
+      data.name  = name;
+      data.color = selectedColor;
+    }
+    save();
+    overlay.remove();
+    renderCategories();
+  });
+
+  if (!isNew) {
+    document.getElementById('cat-delete-btn').addEventListener('click', () => {
+      if (!confirm(`Delete "${data.name}" and all its projects? Tasks will become uncategorised.`)) return;
+      // remove projects in this area
+      const projIds = PROJECTS.filter(p=>p.areaId===data.id).map(p=>p.id);
+      projIds.forEach(pid => {
+        tasks.forEach(t => { if(t.projectId===pid) t.projectId=null; });
+        const i = PROJECTS.findIndex(p=>p.id===pid);
+        if(i!==-1) PROJECTS.splice(i,1);
+      });
+      tasks.forEach(t => { /* tasks already cleared above */ });
+      const i = AREAS.findIndex(a=>a.id===data.id);
+      if(i!==-1) AREAS.splice(i,1);
+      save();
+      overlay.remove();
+      renderCategories();
+    });
+  }
+
+  document.getElementById('cat-name-input').addEventListener('keydown', e => {
+    if (e.key==='Enter') document.getElementById('cat-save-btn').click();
+    if (e.key==='Escape') overlay.remove();
+  });
+}
+
+function openProjectSheet(existing, defaultAreaId) {
+  const isNew = !existing;
+  const data  = existing || { id: null, name: '', areaId: defaultAreaId || AREAS[0]?.id || null, done: 0, total: 0 };
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:600;display:flex;align-items:flex-end';
+
+  const sheet = document.createElement('div');
+  sheet.style.cssText = `width:100%;max-width:430px;margin:0 auto;background:var(--surface);
+    border-radius:20px 20px 0 0;padding:20px 20px calc(env(safe-area-inset-bottom,0px)+20px);
+    animation:slideUp 0.28s cubic-bezier(0.32,0.72,0,1)`;
+
+  const areaOptions = AREAS.map(a =>
+    `<option value="${a.id}" ${a.id===data.areaId?'selected':''}>${a.name}</option>`
+  ).join('');
+
+  sheet.innerHTML = `
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;
+                color:var(--text-tertiary);margin-bottom:12px">${isNew?'New Project':'Edit Project'}</div>
+    <input id="proj-name-input" type="text" value="${data.name}" placeholder="Project name"
+      style="width:100%;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;
+             padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--text-primary);
+             outline:none;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;
+                color:var(--text-tertiary);margin-bottom:8px">Category</div>
+    <select id="proj-area-select" style="width:100%;background:var(--surface-raised);border:1px solid var(--border);
+      border-radius:10px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;
+      color:var(--text-primary);outline:none;margin-bottom:24px;-webkit-appearance:none">
+      ${areaOptions}
+    </select>
+    <div style="display:flex;gap:10px;${isNew?'':'justify-content:space-between'}">
+      ${!isNew ? `<button id="proj-delete-btn" style="background:none;border:none;color:var(--overdue);
+        font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;padding:8px 0">Delete project</button>` : ''}
+      <div style="display:flex;gap:10px;margin-left:auto">
+        <button id="proj-cancel-btn" style="background:none;border:none;color:var(--text-secondary);
+          font-family:'DM Sans',sans-serif;font-size:15px;cursor:pointer;padding:10px 4px">Cancel</button>
+        <button id="proj-save-btn" style="background:var(--accent);color:#0a1f14;border:none;border-radius:10px;
+          padding:10px 22px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer">
+          ${isNew?'Add':'Save'}</button>
+      </div>
+    </div>`;
+
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+  document.getElementById('proj-name-input').focus();
+
+  document.getElementById('proj-cancel-btn').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+
+  document.getElementById('proj-save-btn').addEventListener('click', () => {
+    const name   = document.getElementById('proj-name-input').value.trim();
+    const areaId = document.getElementById('proj-area-select').value;
+    if (!name) { document.getElementById('proj-name-input').focus(); return; }
+    if (isNew) {
+      PROJECTS.push({ id: 'p'+Date.now(), name, areaId, done: 0, total: 0 });
+    } else {
+      data.name   = name;
+      data.areaId = areaId;
+    }
+    save();
+    overlay.remove();
+    renderCategories();
+  });
+
+  if (!isNew) {
+    document.getElementById('proj-delete-btn').addEventListener('click', () => {
+      if (!confirm(`Delete "${data.name}"? Its tasks will become uncategorised.`)) return;
+      tasks.forEach(t => { if(t.projectId===data.id) t.projectId=null; });
+      const i = PROJECTS.findIndex(p=>p.id===data.id);
+      if(i!==-1) PROJECTS.splice(i,1);
+      save();
+      overlay.remove();
+      renderCategories();
+    });
+  }
+
+  document.getElementById('proj-name-input').addEventListener('keydown', e => {
+    if (e.key==='Enter') document.getElementById('proj-save-btn').click();
+    if (e.key==='Escape') overlay.remove();
+  });
+}
+
+// ── CATEGORIES ────────────────────────────────────────────────────────────────
+
+function renderCategories() {
+  const container = document.getElementById('categories-list');
+  container.innerHTML = '';
+
+  // Header row with + New Category button
+  const hdrRow = document.createElement('div');
+  hdrRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:20px 20px 8px';
+  hdrRow.innerHTML = `
+    <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-tertiary)">Categories</span>
+    <button id="add-cat-btn" style="background:none;border:none;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;padding:4px 0">+ New category</button>`;
+  container.appendChild(hdrRow);
+  document.getElementById('add-cat-btn').addEventListener('click', () => openCategorySheet(null));
+
+  AREAS.forEach(a => {
+    const areaProjects = PROJECTS.filter(p => p.areaId === a.id);
+    const totalTasks = areaProjects.reduce((s, p) => s + p.total, 0);
+    const doneTasks  = areaProjects.reduce((s, p) => s + p.done, 0);
+
+    const section = document.createElement('div');
+    section.className = 'area-section';
+
+    const areaHdr = document.createElement('div');
+    areaHdr.className = 'area-header';
+    areaHdr.innerHTML = `
+      <div class="area-header-left">
+        <div class="area-color" style="background:${a.color}"></div>
+        <span class="area-name">${a.name}</span>
+        <span class="area-count">${areaProjects.length} project${areaProjects.length!==1?'s':''}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button class="cat-edit-btn" data-id="${a.id}"
+          style="background:none;border:none;color:var(--text-tertiary);padding:4px 8px;cursor:pointer;
+                 border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px">Edit</button>
+        <svg class="area-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`;
+
+    const projectsDiv = document.createElement('div');
+    projectsDiv.className = 'area-projects';
+
+    areaProjects.forEach(p => {
+      const projTasks = tasks.filter(t => t.projectId === p.id);
+      const doneTasks = projTasks.filter(t => t.done).length;
+      const totalTasks = projTasks.length;
+      const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+      const pRow = document.createElement('div');
+      pRow.className = 'project-row';
+      pRow.style.cursor = 'pointer';
+      pRow.innerHTML = `
+        <span class="project-name">${p.name}</span>
+        <div class="project-progress"><div class="project-progress-fill" style="width:${pct}%"></div></div>
+        <span class="project-task-count" style="margin-right:2px">${doneTasks}/${totalTasks}</span>
+        <button class="proj-edit-btn" data-id="${p.id}"
+          style="background:none;border:none;color:var(--text-tertiary);padding:4px 6px;cursor:pointer;
+                 border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;flex-shrink:0">Edit</button>
+        <svg class="area-chevron" style="flex-shrink:0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+      // tasks for this project
+      const projectTasks = document.createElement('div');
+      projectTasks.className = 'area-projects'; // reuse collapse style
+      projectTasks.style.borderTop = 'none';
+
+      const projTaskList = tasks.filter(t => t.projectId === p.id);
+
+      if (projTaskList.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'padding:10px 20px 10px 52px;font-size:13px;color:var(--text-tertiary)';
+        empty.textContent = 'No tasks yet';
+        projectTasks.appendChild(empty);
+      } else {
+        projTaskList.forEach(t => {
+          const tRow = document.createElement('div');
+          tRow.className = 'item-row';
+          tRow.style.paddingLeft = '52px';
+          tRow.innerHTML = `
+            <div class="item-indicator"><div class="task-checkbox${t.done ? ' checked' : ''}"></div></div>
+            <div class="item-content">
+              <div class="item-title${t.done ? ' completed' : ''}">${t.title}</div>
+              ${t.due ? `<div class="item-meta"><span class="item-time${isPast(t.due) && !t.done ? ' overdue' : ''}">${fmtDateShort(t.due)}</span></div>` : ''}
+            </div>
+            ${t.priority && !t.done ? '<div class="item-right"><div class="item-flag"></div></div>' : ''}`;
+
+          // checkbox
+          tRow.querySelector('.task-checkbox').addEventListener('click', e => {
+            e.stopPropagation();
+            t.done = !t.done;
+            save();
+            renderCategories();
+          });
+
+          // tap to open detail
+          tRow.addEventListener('click', e => {
+            if (e.target.closest('.item-indicator')) return;
+            openTaskDetail(t);
+          });
+
+          projectTasks.appendChild(tRow);
+        });
+      }
+
+      // linked lists for this project
+      const projLinkedLists = lists.filter(l => l.linkedProjectId === p.id);
+      projLinkedLists.forEach(ll => {
+        const llRow = document.createElement('div');
+        llRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 20px 9px 52px;border-bottom:1px solid var(--border);cursor:pointer;background:var(--bg)';
+        llRow.innerHTML = `
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <span style="font-size:13px;color:var(--text-secondary)">${ll.name} list</span>
+          <span style="font-size:11px;color:var(--text-tertiary);margin-left:auto">${ll.items.length} items</span>`;
+        llRow.addEventListener('click', () => navigateToList(ll.id));
+        projectTasks.appendChild(llRow);
+      });
+
+      // toggle project open/close (ignore edit button)
+      pRow.addEventListener('click', (e) => {
+        if (e.target.closest('.proj-edit-btn')) return;
+        const chevron = pRow.querySelector('.area-chevron');
+        chevron.classList.toggle('open');
+        projectTasks.classList.toggle('open');
+      });
+
+      // project edit button
+      pRow.querySelector('.proj-edit-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        openProjectSheet(p, null);
+      });
+
+      projectsDiv.appendChild(pRow);
+      projectsDiv.appendChild(projectTasks);
+    });
+
+    // + New project row
+    const addProjRow = document.createElement('div');
+    addProjRow.style.cssText = 'padding:10px 20px 10px 40px;border-bottom:1px solid var(--border);cursor:pointer';
+    addProjRow.innerHTML = '<span style="font-size:13.5px;color:var(--accent)">+ New project</span>';
+    addProjRow.addEventListener('click', () => openProjectSheet(null, a.id));
+    projectsDiv.appendChild(addProjRow);
+
+    // linked lists for this category (not attached to a specific project)
+    const catLinkedLists = lists.filter(l => l.linkedCategoryId === a.id && !l.linkedProjectId);
+    catLinkedLists.forEach(ll => {
+      const llRow = document.createElement('div');
+      llRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:11px 20px;border-bottom:1px solid var(--border);cursor:pointer;background:var(--bg)';
+      llRow.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span style="font-size:13.5px;color:var(--text-secondary)">${ll.name} list</span>
+        <span style="font-size:11px;color:var(--text-tertiary);margin-left:auto">${ll.items.length} items</span>`;
+      llRow.addEventListener('click', () => navigateToList(ll.id));
+      projectsDiv.appendChild(llRow);
+    });
+
+    // area header click — ignore edit button
+    areaHdr.addEventListener('click', (e) => {
+      if (e.target.closest('.cat-edit-btn')) return;
+      const chevron = areaHdr.querySelector('.area-chevron');
+      chevron.classList.toggle('open');
+      projectsDiv.classList.toggle('open');
+    });
+
+    // category edit button
+    areaHdr.querySelector('.cat-edit-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      openCategorySheet(a);
+    });
+
+    section.appendChild(areaHdr);
+    section.appendChild(projectsDiv);
+    container.appendChild(section);
+  });
+}
+
+// ── UPCOMING ──────────────────────────────────────────────────────────────────
+
+function renderUpcoming() {
+  const container = document.getElementById('upcoming-list');
+  container.innerHTML = '';
+
+  for (let i = 1; i <= 7; i++) {
+    const dt = new Date(today);
+    dt.setDate(today.getDate() + i);
+
+    const dayTasks  = tasks.filter(t => t.due && isSameDay(t.due, dt) && !t.done);
+    const dayEvents = events.filter(e => isSameDay(e.start, dt));
+
+    if (!dayTasks.length && !dayEvents.length) continue;
+
+    const dateHdr = document.createElement('div');
+    dateHdr.className = 'upcoming-date-header';
+    const isThisWeek = i <= 7;
+    const weekday = dt.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateStr  = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    dateHdr.innerHTML = `<div class="date-label">${weekday}</div><div class="date-sub">${dateStr}</div>`;
+    container.appendChild(dateHdr);
+
+    const sorted = [...dayEvents.sort((a,b)=>a.start-b.start), ...dayTasks];
+    sorted.forEach(item => {
+      if (item.type === 'event') container.appendChild(makeEventRow(item));
+      else container.appendChild(makeTaskRow(item, false));
+    });
+  }
+}
+
+// ── SOMEDAY VIEW (mobile) ────────────────────────────────────────────────────
+
+function renderSomedayView() {
+  const container = document.getElementById('someday-list');
+  container.innerHTML = '';
+
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:24px 20px 4px';
+  hdr.innerHTML = '<h2 style="font-size:24px;font-weight:600;letter-spacing:-0.5px;color:var(--text-primary)">Someday</h2><div style="font-size:13px;color:var(--text-tertiary);margin-top:2px">Tasks with no due date</div>';
+  container.appendChild(hdr);
+
+  const someday = tasks.filter(t => !t.due && !t.done);
+  if (someday.length === 0) {
+    container.innerHTML += '<div class="inbox-empty"><p class="inbox-empty-title">Nothing here yet</p><p>Tasks without a due date will appear here.</p></div>';
+    return;
+  }
+  someday.forEach(t => container.appendChild(makeTaskRow(t, false)));
+
+  const done = tasks.filter(t => !t.due && t.done);
+  if (done.length) {
+    const doneHdr = document.createElement('div');
+    doneHdr.className = 'section-header';
+    doneHdr.textContent = 'Completed \u00b7 ' + done.length;
+    container.appendChild(doneHdr);
+    done.forEach(t => container.appendChild(makeTaskRow(t, false)));
+  }
+}
+
+// ── PROJECTS VIEW (mobile) ───────────────────────────────────────────────────
+
+function renderProjectsView() {
+  const container = document.getElementById('projects-list');
+  container.innerHTML = '';
+
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:24px 20px 4px';
+  hdr.innerHTML = '<h2 style="font-size:24px;font-weight:600;letter-spacing:-0.5px;color:var(--text-primary)">Projects</h2>';
+  container.appendChild(hdr);
+
+  if (PROJECTS.length === 0) {
+    container.innerHTML += '<div class="inbox-empty"><p class="inbox-empty-title">No projects yet</p><p>Create projects inside Categories to see them here.</p></div>';
+    return;
+  }
+
+  // Group projects by area
+  const ungrouped = [];
+  const areaMap = new Map();
+  PROJECTS.forEach(p => {
+    const area = p.areaId ? AREAS.find(a => a.id === p.areaId) : null;
+    if (area) {
+      if (!areaMap.has(area.id)) areaMap.set(area.id, { area, projects: [] });
+      areaMap.get(area.id).projects.push(p);
+    } else {
+      ungrouped.push(p);
+    }
+  });
+
+  const renderGroup = (label, color, projects) => {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:8px';
+
+    const groupHdr = document.createElement('div');
+    groupHdr.className = 'section-header';
+    groupHdr.style.cssText = 'display:flex;align-items:center;gap:8px;padding:16px 20px 6px';
+    groupHdr.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${color || 'var(--text-tertiary)'};flex-shrink:0"></span><span>${label}</span>`;
+    section.appendChild(groupHdr);
+
+    projects.forEach(p => {
+      const projTasks = tasks.filter(t => t.projectId === p.id);
+      const remaining = projTasks.filter(t => !t.done).length;
+      const total = projTasks.length;
+
+      const row = document.createElement('div');
+      row.className = 'project-row';
+      row.style.cssText = 'padding:10px 20px;display:flex;align-items:center;gap:12px;cursor:pointer';
+      row.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.8" style="flex-shrink:0"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span style="flex:1;font-size:16px;color:var(--text-primary)">${p.name}</span>
+        <span style="font-size:13px;color:var(--text-tertiary)">${remaining}${total ? ' / ' + total : ''}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+      row.addEventListener('click', () => openMobileProject(p));
+      section.appendChild(row);
+    });
+
+    container.appendChild(section);
+  };
+
+  areaMap.forEach(({ area, projects }) => renderGroup(area.name, area.color, projects));
+  if (ungrouped.length) renderGroup('Uncategorized', null, ungrouped);
+}
+
+function openMobileProject(project) {
+  const area = project.areaId ? AREAS.find(a => a.id === project.areaId) : null;
+  const container = document.getElementById('projects-list');
+  container.innerHTML = '';
+
+  // Back button + header
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:20px 20px 4px;display:flex;align-items:center;gap:12px';
+  hdr.innerHTML = `
+    <button id="proj-back" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-secondary);line-height:0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div>
+      <h2 style="font-size:22px;font-weight:600;letter-spacing:-0.3px;color:var(--text-primary)">${project.name}</h2>
+      ${area ? `<div style="font-size:13px;color:var(--text-tertiary)">${area.name}</div>` : ''}
+    </div>`;
+  container.appendChild(hdr);
+
+  hdr.querySelector('#proj-back').addEventListener('click', () => renderProjectsView());
+
+  const projTasks = tasks.filter(t => t.projectId === project.id);
+  const active = projTasks.filter(t => !t.done);
+  const done = projTasks.filter(t => t.done);
+
+  if (active.length === 0 && done.length === 0) {
+    container.innerHTML += '<div class="inbox-empty"><p class="inbox-empty-title">No tasks yet</p><p>Add tasks to this project from the Inbox or Today view.</p></div>';
+    return;
+  }
+
+  active.forEach(t => container.appendChild(makeTaskRow(t, false)));
+
+  if (done.length) {
+    const doneHdr = document.createElement('div');
+    doneHdr.className = 'section-header';
+    doneHdr.textContent = 'Completed \u00b7 ' + done.length;
+    container.appendChild(doneHdr);
+    done.forEach(t => container.appendChild(makeTaskRow(t, false)));
+  }
+}
+
+// ── NAV CONFIG & DYNAMIC NAV BAR ─────────────────────────────────────────────
+
+const NAV_TABS = {
+  today:      { label: 'Today',      svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>' },
+  inbox:      { label: 'Inbox',      svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' },
+  lists:      { label: 'Lists',      svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>' },
+  places:     { label: 'Places',     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' },
+  upcoming:   { label: 'Upcoming',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
+  categories: { label: 'Categories', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' },
+  projects:   { label: 'Projects',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
+  someday:    { label: 'Someday',    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' },
+};
+
+const DEFAULT_NAV_CONFIG = [
+  { id: 'today',      visible: false },
+  { id: 'inbox',      visible: false },
+  { id: 'lists',      visible: true },
+  { id: 'places',     visible: true },
+  { id: 'upcoming',   visible: false },
+  { id: 'categories', visible: false },
+  { id: 'projects',   visible: false },
+  { id: 'someday',    visible: false },
+];
+
+function getNavConfig() {
+  try {
+    const raw = localStorage.getItem('lo_nav_config');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Ensure all known tabs are present (in case new ones are added later)
+      const ids = parsed.map(t => t.id);
+      for (const def of DEFAULT_NAV_CONFIG) {
+        if (!ids.includes(def.id)) parsed.push({ ...def });
+      }
+      return parsed.filter(t => NAV_TABS[t.id]);
+    }
+  } catch(e) {}
+  return DEFAULT_NAV_CONFIG.map(t => ({ ...t }));
+}
+
+function saveNavConfig(config) {
+  localStorage.setItem('lo_nav_config', JSON.stringify(config));
+}
+
+function buildNavBar() {
+  const nav = document.getElementById('top-nav');
+  nav.innerHTML = '';
+  const config = getNavConfig();
+
+  // Determine which tab should be active
+  const currentActive = document.querySelector('.view.active');
+  const currentViewId = currentActive ? currentActive.id.replace('view-', '') : null;
+  const visibleTabs = config.filter(t => t.visible);
+
+  // Find the first visible tab to default to if current isn't visible
+  let activeId = currentViewId;
+  if (!visibleTabs.find(t => t.id === activeId)) {
+    activeId = visibleTabs.length ? visibleTabs[0].id : null;
+  }
+
+  config.forEach(t => {
+    if (!t.visible) return;
+    const def = NAV_TABS[t.id];
+    if (!def) return;
+    const btn = document.createElement('button');
+    btn.className = 'nav-tab' + (t.id === activeId ? ' active' : '');
+    btn.dataset.view = t.id;
+    btn.innerHTML = def.svg + def.label;
+    btn.addEventListener('click', () => {
+      nav.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      const view = document.getElementById('view-' + t.id);
+      if (view) view.classList.add('active');
+      switch(t.id) {
+        case 'today':      buildWeekStrip(); renderTodayList(); break;
+        case 'inbox':      renderInbox(); break;
+        case 'lists':      renderLists(); break;
+        case 'categories': renderCategories(); break;
+        case 'projects':   renderProjectsView(); break;
+        case 'places':     renderPlaces(); break;
+        case 'upcoming':   renderUpcoming(); break;
+        case 'someday':    renderSomedayView(); break;
+      }
+    });
+    nav.appendChild(btn);
+  });
+
+  // Always-present settings gear
+  const gearBtn = document.createElement('button');
+  gearBtn.className = 'nav-tab';
+  gearBtn.id = 'settings-btn';
+  gearBtn.style.cssText = 'flex:0;padding:14px 14px;';
+  gearBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  gearBtn.addEventListener('click', () => {
+    if (isDesktop()) { switchDesktopView('settings'); return; }
+    const isOpen = document.getElementById('view-settings').classList.contains('active');
+    if (isOpen) {
+      // Go back to first visible tab
+      const first = nav.querySelector('.nav-tab[data-view]');
+      if (first) first.click();
+      return;
+    }
+    nav.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    gearBtn.classList.add('active');
+    document.getElementById('view-settings').classList.add('active');
+    renderSettings();
+  });
+  nav.appendChild(gearBtn);
+
+  // Activate the correct view
+  if (activeId && activeId !== currentViewId) {
+    const tabBtn = nav.querySelector(`.nav-tab[data-view="${activeId}"]`);
+    if (tabBtn) tabBtn.click();
+  }
+}
+
+buildNavBar();
+
+// ── QUICK ADD ─────────────────────────────────────────────────────────────────
+
+const overlay   = document.getElementById('quick-add-overlay');
+const input     = document.getElementById('quick-add-input');
+const submitBtn = document.getElementById('qa-submit');
+
+const addBtn = document.getElementById('btn-add');
+const captureBar = document.getElementById('capture-bar');
+
+function collapseCaptureBar() {
+  captureBar.classList.remove('expanded');
+  addBtn.classList.remove('expanded');
+}
+
+addBtn.addEventListener('click', () => {
+  const isExpanded = captureBar.classList.contains('expanded');
+  if (isExpanded) {
+    collapseCaptureBar();
+  } else {
+    captureBar.classList.add('expanded');
+    addBtn.classList.add('expanded');
+  }
+});
+
+// Collapse fan-out when tapping outside
+document.addEventListener('click', e => {
+  if (captureBar.classList.contains('expanded') && !captureBar.contains(e.target)) {
+    collapseCaptureBar();
+  }
+});
+
+document.getElementById('btn-type').addEventListener('click', () => {
+  collapseCaptureBar();
+  overlay.classList.add('open');
+  setTimeout(() => input.focus(), 100);
+});
+
+document.getElementById('qa-cancel').addEventListener('click', closeQuickAdd);
+
+overlay.addEventListener('click', e => {
+  if (e.target === overlay) closeQuickAdd();
+});
+
+input.addEventListener('input', () => {
+  submitBtn.disabled = input.value.trim() === '';
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && input.value.trim()) submitTask();
+});
+
+submitBtn.addEventListener('click', submitTask);
+
+function submitTask() {
+  const text = input.value.trim();
+  if (!text) return;
+  inboxItems.push({ id: 'i' + Date.now(), title: text, type: 'task', done: false, notes: '' });
+  save();
+  closeQuickAdd();
+  const inboxTab = document.querySelector('[data-view="inbox"]');
+  if (inboxTab) inboxTab.click();
+}
+
+function closeQuickAdd() {
+  overlay.classList.remove('open');
+  input.value = '';
+  submitBtn.disabled = true;
+}
+
+// ── VOICE INPUT ───────────────────────────────────────────────────────────────
+
+const voiceBtn = document.getElementById('btn-voice');
+let recognition = null;
+
+voiceBtn.addEventListener('click', () => {
+  collapseCaptureBar();
+
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Voice input is not supported in this browser. Try Chrome or Safari.');
+    return;
+  }
+
+  if (voiceBtn.classList.contains('listening')) {
+    recognition && recognition.stop();
+    return;
+  }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+
+  voiceBtn.classList.add('listening');
+
+  recognition.onresult = e => {
+    const text = e.results[0][0].transcript;
+    input.value = text;
+    submitBtn.disabled = false;
+    overlay.classList.add('open');
+    voiceBtn.classList.remove('listening');
+  };
+
+  recognition.onerror = recognition.onend = () => {
+    voiceBtn.classList.remove('listening');
+  };
+
+  recognition.start();
+});
+
+// ── TASK DETAIL SHEET ─────────────────────────────────────────────────────────
+
+const tdOverlay  = document.getElementById('task-detail-overlay');
+const tdSheet    = document.getElementById('task-detail-sheet');
+let   editingTask = null;
+
+function openTaskDetail(task) {
+  editingTask = task;
+
+  // Populate fields
+  const titleEl = document.getElementById('td-title');
+  titleEl.value = task.title;
+  // force height recalc after value is set
+  titleEl.style.height = 'auto';
+  titleEl.style.height = titleEl.scrollHeight + 'px';
+
+  // Done state
+  updateTdDoneBtn(task.done);
+
+  // Date
+  const dateInput = document.getElementById('td-date-input');
+  const dateValue = document.getElementById('td-date-value');
+  const datePicker = document.getElementById('td-date-picker');
+  datePicker.classList.remove('open');
+
+  if (task.due) {
+    const d = task.due;
+    const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    dateInput.value = iso;
+    dateValue.textContent = fmtDateShort(task.due);
+    dateValue.className = `td-field-value${isPast(task.due) && !task.done ? ' overdue' : ' accent'}`;
+  } else {
+    dateInput.value = '';
+    dateValue.textContent = 'No date';
+    dateValue.className = 'td-field-value placeholder';
+  }
+
+  // Project
+  buildProjectPicker(task.projectId);
+
+  // Priority
+  document.getElementById('td-priority-toggle').checked = !!task.priority;
+
+  // Notes
+  document.getElementById('td-notes').value = task.notes || '';
+
+  tdOverlay.classList.add('open');
+  setTimeout(() => titleEl.focus(), 150);
+}
+
+function updateTdDoneBtn(done) {
+  const btn = document.getElementById('td-done-btn');
+  const label = document.getElementById('td-done-label');
+  btn.classList.toggle('completed', done);
+  label.textContent = done ? 'Completed' : 'Mark complete';
+}
+
+function buildProjectPicker(selectedId) {
+  const picker = document.getElementById('td-project-picker');
+  const valueEl = document.getElementById('td-project-value');
+
+  picker.innerHTML = '';
+
+  // No project option
+  const noneOpt = document.createElement('div');
+  noneOpt.className = `td-project-option${!selectedId ? ' selected' : ''}`;
+  noneOpt.innerHTML = `<div class="td-project-dot" style="background:var(--text-tertiary)"></div> No project`;
+  noneOpt.addEventListener('click', () => {
+    editingTask.projectId = null;
+    valueEl.textContent = 'No project';
+    valueEl.className = 'td-field-value placeholder';
+    picker.classList.remove('open');
+    buildProjectPicker(null);
+  });
+  picker.appendChild(noneOpt);
+
+  PROJECTS.forEach(p => {
+    const a = area(AREAS.find(ar => ar.id === p.areaId)?.id);
+    const aObj = AREAS.find(ar => ar.id === p.areaId);
+    const opt = document.createElement('div');
+    opt.className = `td-project-option${selectedId === p.id ? ' selected' : ''}`;
+    opt.innerHTML = `<div class="td-project-dot" style="background:${aObj?.color || 'var(--text-tertiary)'}"></div>${p.name}`;
+    opt.addEventListener('click', () => {
+      editingTask.projectId = p.id;
+      valueEl.textContent = p.name;
+      valueEl.className = 'td-field-value accent';
+      picker.classList.remove('open');
+      buildProjectPicker(p.id);
+    });
+    picker.appendChild(opt);
+  });
+
+  // Update display value
+  if (selectedId) {
+    const p = proj(selectedId);
+    if (p) {
+      valueEl.textContent = p.name;
+      valueEl.className = 'td-field-value accent';
+    }
+  } else {
+    valueEl.textContent = 'No project';
+    valueEl.className = 'td-field-value placeholder';
+  }
+}
+
+function closeTaskDetail() {
+  tdOverlay.classList.remove('open');
+  editingTask = null;
+}
+
+function saveTaskDetail() {
+  if (!editingTask) return;
+
+  const title = document.getElementById('td-title').value.trim();
+  if (!title) return;
+
+  editingTask.title    = title;
+  editingTask.priority = document.getElementById('td-priority-toggle').checked;
+  editingTask.notes    = document.getElementById('td-notes').value.trim();
+
+  const dateVal = document.getElementById('td-date-input').value;
+  if (dateVal) {
+    const [y,m,d] = dateVal.split('-').map(Number);
+    editingTask.due = new Date(y, m-1, d);
+  } else {
+    editingTask.due = null;
+  }
+
+  save();
+  closeTaskDetail();
+  refreshCurrentView();
+}
+
+function deleteTask() {
+  if (!editingTask) return;
+  const idx = tasks.findIndex(t => t.id === editingTask.id);
+  if (idx !== -1) tasks.splice(idx, 1);
+  const iIdx = inboxItems.findIndex(t => t.id === editingTask.id);
+  if (iIdx !== -1) inboxItems.splice(iIdx, 1);
+  save();
+  closeTaskDetail();
+  refreshCurrentView();
+}
+
+function refreshCurrentView() {
+  const activeTab = document.querySelector('.nav-tab.active');
+  if (!activeTab) return;
+  switch(activeTab.dataset.view) {
+    case 'today':    buildWeekStrip(); renderTodayList(); break;
+    case 'inbox':    renderInbox(); break;
+    case 'lists': renderLists(); break;
+    case 'categories':    renderCategories(); break;
+    case 'places':   renderPlaces(); break;
+    case 'upcoming': renderUpcoming(); break;
+  }
+}
+
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+function isPast(dt) {
+  return dt < today && !isSameDay(dt, today);
+}
+
+function fmtDateShort(dt) {
+  if (isSameDay(dt, today)) return 'Today';
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+  if (isSameDay(dt, tomorrow)) return 'Tomorrow';
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// Wire up detail sheet events
+document.getElementById('td-close').addEventListener('click', closeTaskDetail);
+document.getElementById('td-save').addEventListener('click', saveTaskDetail);
+document.getElementById('td-delete').addEventListener('click', deleteTask);
+
+document.getElementById('td-done-btn').addEventListener('click', () => {
+  if (!editingTask) return;
+  editingTask.done = !editingTask.done;
+  updateTdDoneBtn(editingTask.done);
+});
+
+document.getElementById('td-title').addEventListener('input', function() {
+  autoResizeTextarea(this);
+});
+
+// Date field toggle
+document.getElementById('td-date-field').addEventListener('click', () => {
+  const picker = document.getElementById('td-date-picker');
+  picker.classList.toggle('open');
+  if (picker.classList.contains('open')) {
+    document.getElementById('td-date-input').focus();
+  }
+});
+
+document.getElementById('td-date-input').addEventListener('change', function() {
+  const dateValue = document.getElementById('td-date-value');
+  if (this.value) {
+    const [y,m,d] = this.value.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    dateValue.textContent = fmtDateShort(dt);
+    dateValue.className = 'td-field-value accent';
+  } else {
+    dateValue.textContent = 'No date';
+    dateValue.className = 'td-field-value placeholder';
+  }
+});
+
+// Project field toggle
+document.getElementById('td-project-field').addEventListener('click', () => {
+  const picker = document.getElementById('td-project-picker');
+  picker.classList.toggle('open');
+});
+
+// Close on overlay tap
+tdOverlay.addEventListener('click', e => {
+  if (e.target === tdOverlay) closeTaskDetail();
+});
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+
+const SETTINGS_KEYS = {
+  gcalClientId:   'lo_gcal_client_id',
+  gcalEnabled:    'lo_gcal_enabled',
+  supabaseUrl:    'lo_supabase_url',
+  supabaseKey:    'lo_supabase_key',
+  supabaseEnabled:'lo_supabase_enabled',
+  userName:       'lo_user_name',
+  timezone:       'lo_timezone',
+  uiMode:         'lo_ui_mode',
+};
+
+function getSetting(key) { return localStorage.getItem(SETTINGS_KEYS[key]) || ''; }
+function setSetting(key, val) { localStorage.setItem(SETTINGS_KEYS[key], val); }
+
+function isFullMode() { return getSetting('uiMode') === 'full'; }
+
+function applyUIMode() {
+  const full = isFullMode();
+  // Rebuild mobile nav to reflect visibility
+  buildNavBar();
+  // Desktop sidebar items to hide in lists-only mode
+  const hideDeskViews = ['today', 'inbox', 'upcoming', 'someday'];
+  document.querySelectorAll('.sb-item[data-desktop-view]').forEach(el => {
+    if (hideDeskViews.includes(el.dataset.desktopView)) {
+      el.style.display = full ? '' : 'none';
+    }
+  });
+  // Hide areas/projects section and its surrounding dividers
+  const sbAreas = document.getElementById('sb-areas');
+  if (sbAreas) sbAreas.style.display = full ? '' : 'none';
+  // Hide dividers around areas section
+  document.querySelectorAll('#desktop-sidebar .sb-divider').forEach(d => {
+    d.style.display = full ? '' : 'none';
+  });
+  // Hide "New To-Do" button in lists-only mode
+  const sbNewBtn = document.getElementById('sb-new-btn');
+  if (sbNewBtn) sbNewBtn.style.display = full ? '' : 'none';
+  // Hide floating + and mic buttons in lists-only mode
+  const captureBar = document.getElementById('capture-bar');
+  if (captureBar) captureBar.style.display = full ? '' : 'none';
+  // Switch to lists view if current view is hidden
+  if (!full) {
+    if (isDesktop()) {
+      if (hideDeskViews.includes(desktopView) || desktopView.startsWith('project:') || desktopView.startsWith('category:')) {
+        switchDesktopView('lists');
+      }
+    } else {
+      const activeTab = document.querySelector('.nav-tab.active');
+      if (activeTab && hideViews.includes(activeTab.dataset.view)) {
+        const listsTab = document.querySelector('.nav-tab[data-view="lists"]');
+        if (listsTab) listsTab.click();
+      }
+    }
+  }
+}
+
+function renderSettings() {
+  const container = document.getElementById('settings-list');
+  container.innerHTML = '';
+
+  const gcalConnected  = getSetting('gcalEnabled') === 'true';
+  const supConnected   = getSetting('supabaseEnabled') === 'true';
+  const userName       = getSetting('userName');
+
+  container.innerHTML = `
+    <!-- Header -->
+    <div style="padding:24px 20px 4px">
+      <h2 style="font-size:24px;font-weight:600;letter-spacing:-0.5px;color:var(--text-primary)">Settings</h2>
+    </div>
+
+    <!-- GENERAL -->
+    <div class="settings-section">
+      <div class="settings-section-title">General</div>
+      <div class="settings-group">
+        <div class="settings-row settings-input-row" id="s-name-row">
+          <div class="settings-row-label-line">
+            <div class="settings-row-icon" style="background:#2a2a2c">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="settings-row-body">
+              <div class="settings-row-label">Your name</div>
+              <div class="settings-row-sub">Used for greetings (optional)</div>
+            </div>
+          </div>
+          <input class="settings-field-input" id="s-name-input" type="text"
+            placeholder="e.g. Alex" value="${userName}" autocomplete="off">
+          <button class="settings-save-btn" id="s-name-save">Save</button>
+        </div>
+        <div class="settings-row" style="align-items:center">
+          <div class="settings-row-icon" style="background:#1a2a3a">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5b9cf6" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+          <div class="settings-row-body">
+            <div class="settings-row-label">Enable Projects &amp; Tasks mode</div>
+            <div class="settings-row-sub">Show Today, Inbox, Categories and task management</div>
+          </div>
+          <label class="td-toggle">
+            <input type="checkbox" id="s-ui-mode-toggle" ${isFullMode() ? 'checked' : ''}>
+            <div class="td-toggle-track"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- NAVIGATION -->
+    <div class="settings-section">
+      <div class="settings-section-title">Navigation</div>
+      <div class="settings-group" id="s-nav-list" style="padding:4px 0"></div>
+      <div style="padding:4px 20px 8px;font-size:12px;color:var(--text-tertiary);line-height:1.6">
+        Drag to reorder. Toggle to show or hide tabs in the bottom nav bar.
+      </div>
+    </div>
+
+    <!-- GOOGLE CALENDAR -->
+    <div class="settings-section">
+      <div class="settings-section-title">Google Calendar</div>
+      <div class="settings-group">
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:#1a2a3a">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5b9cf6" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="settings-row-body">
+            <div class="settings-row-label">Google Calendar</div>
+            <div class="settings-row-sub">${gcalConnected ? 'Connected — events showing in Today &amp; Upcoming' : 'Not connected yet'}</div>
+          </div>
+          <span class="settings-badge ${gcalConnected ? 'connected' : 'soon'}">${gcalConnected ? 'Connected' : 'Soon'}</span>
+        </div>
+        <div class="settings-row settings-input-row" id="s-gcal-row">
+          <div class="settings-row-label-line">
+            <div class="settings-row-body">
+              <div class="settings-row-label" style="font-size:13.5px">OAuth Client ID</div>
+              <div class="settings-row-sub">From Google Cloud Console → APIs &amp; Services → Credentials</div>
+            </div>
+          </div>
+          <input class="settings-field-input" id="s-gcal-input" type="text"
+            placeholder="Paste your Client ID here" value="${getSetting('gcalClientId')}" autocomplete="off" spellcheck="false">
+          <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+            ${gcalConnected ? `<button class="settings-danger-btn" id="s-gcal-disconnect"
+              style="padding:0;width:auto;font-size:13px">Disconnect</button>` : ''}
+            <button class="settings-save-btn" id="s-gcal-save">
+              ${gcalConnected ? 'Update' : 'Connect'}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div style="padding:8px 20px;font-size:12px;color:var(--text-tertiary);line-height:1.6">
+        Set up instructions: Google Cloud Console → New Project → Enable Calendar API
+        → Credentials → OAuth Client ID (Web app). Coming soon: step-by-step guide.
+      </div>
+    </div>
+
+    <!-- SUPABASE -->
+    <div class="settings-section">
+      <div class="settings-section-title">Cloud Sync (Supabase)</div>
+      <div class="settings-group">
+        <div class="settings-row">
+          <div class="settings-row-icon" style="background:#1a2e22">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4caf80" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          </div>
+          <div class="settings-row-body">
+            <div class="settings-row-label">Supabase sync</div>
+            <div class="settings-row-sub">${supConnected ? 'Connected — data syncing to cloud' : 'Not connected — data is local only'}</div>
+          </div>
+          <span class="settings-badge ${supConnected ? 'connected' : 'soon'}">${supConnected ? 'Connected' : 'Soon'}</span>
+        </div>
+        <div class="settings-row settings-input-row">
+          <div class="settings-row-body">
+            <div class="settings-row-label" style="font-size:13.5px">Project URL</div>
+          </div>
+          <input class="settings-field-input" id="s-sup-url" type="text"
+            placeholder="https://xxxxx.supabase.co" value="${getSetting('supabaseUrl')}" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="settings-row settings-input-row">
+          <div class="settings-row-body">
+            <div class="settings-row-label" style="font-size:13.5px">Anon key</div>
+          </div>
+          <input class="settings-field-input" id="s-sup-key" type="password"
+            placeholder="eyJhbGci…" value="${getSetting('supabaseKey')}" autocomplete="off" spellcheck="false">
+          <button class="settings-save-btn" id="s-sup-save">Save</button>
+        </div>
+      </div>
+      <div style="padding:8px 20px;font-size:12px;color:var(--text-tertiary);line-height:1.6">
+        Supabase is a free, open-source database. Your data stays in your own Supabase project.
+        Sync will be wired up when the PWA is deployed.
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="settings-section">
+      <div class="settings-section-title">Data</div>
+      <div class="settings-group">
+        <div class="settings-row" id="s-export-json-row" style="cursor:pointer">
+          <div class="settings-row-icon" style="background:#2a2a2c">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div class="settings-row-body">
+            <div class="settings-row-label">Export as JSON</div>
+            <div class="settings-row-sub">Full backup — can be reimported later</div>
+          </div>
+          <svg class="settings-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row" id="s-export-csv-row" style="cursor:pointer">
+          <div class="settings-row-icon" style="background:#2a2a2c">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          </div>
+          <div class="settings-row-body">
+            <div class="settings-row-label">Export tasks as CSV</div>
+            <div class="settings-row-sub">Opens in Excel or Google Sheets</div>
+          </div>
+          <svg class="settings-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="settings-row" style="cursor:pointer" id="s-clear-row">
+          <div class="settings-row-icon" style="background:#2d1c1a">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--overdue)" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </div>
+          <div class="settings-row-body">
+            <div class="settings-row-label" style="color:var(--overdue)">Clear all data</div>
+            <div class="settings-row-sub">Removes all tasks, lists and categories</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERSION -->
+    <div style="padding:8px 20px 40px;text-align:center;font-size:12px;color:var(--text-tertiary)">
+      Life Organizer · v0.1 · All data stored locally
+    </div>
+  `;
+
+  // Wire up buttons
+  document.getElementById('s-ui-mode-toggle').addEventListener('change', (e) => {
+    setSetting('uiMode', e.target.checked ? 'full' : '');
+    applyUIMode();
+    showSettingsToast(e.target.checked ? 'Projects & Tasks mode enabled' : 'Lists-only mode enabled');
+  });
+
+  document.getElementById('s-name-save').addEventListener('click', () => {
+    setSetting('userName', document.getElementById('s-name-input').value.trim());
+    showSettingsToast('Name saved');
+  });
+
+  document.getElementById('s-gcal-save').addEventListener('click', () => {
+    const id = document.getElementById('s-gcal-input').value.trim();
+    if (!id) return;
+    setSetting('gcalClientId', id);
+    setSetting('gcalEnabled', 'true');
+    showSettingsToast('Google Calendar credentials saved');
+    renderSettings();
+  });
+
+  if (document.getElementById('s-gcal-disconnect')) {
+    document.getElementById('s-gcal-disconnect').addEventListener('click', () => {
+      if (!confirm('Disconnect Google Calendar?')) return;
+      setSetting('gcalEnabled', 'false');
+      setSetting('gcalClientId', '');
+      renderSettings();
+    });
+  }
+
+  document.getElementById('s-sup-save').addEventListener('click', () => {
+    const url = document.getElementById('s-sup-url').value.trim();
+    const key = document.getElementById('s-sup-key').value.trim();
+    if (!url || !key) { showSettingsToast('Enter both URL and key'); return; }
+    setSetting('supabaseUrl', url);
+    setSetting('supabaseKey', key);
+    setSetting('supabaseEnabled', 'true');
+    showSettingsToast('Supabase credentials saved');
+    renderSettings();
+  });
+
+  document.getElementById('s-export-json-row').addEventListener('click', () => {
+    const data = {
+      exported: new Date().toISOString(),
+      tasks, inboxItems, lists,
+      categories: AREAS, projects: PROJECTS
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'life-organizer-backup.json';
+    a.click();
+  });
+
+  document.getElementById('s-export-csv-row').addEventListener('click', () => {
+    const allTasks = [
+      ...tasks.map(t => ({ ...t, source: 'tasks' })),
+      ...inboxItems.map(t => ({ ...t, source: 'inbox' }))
+    ];
+    const rows = [
+      ['Title', 'Due Date', 'Project', 'Category', 'Priority', 'Done', 'Notes', 'Source']
+    ];
+    allTasks.forEach(t => {
+      const p    = PROJECTS.find(p => p.id === t.projectId);
+      const a    = p ? AREAS.find(a => a.id === p.areaId) : null;
+      const due  = t.due ? new Date(t.due).toLocaleDateString('en-US') : '';
+      rows.push([
+        '"' + (t.title  || '').replace(/"/g, '""') + '"',
+        due,
+        '"' + (p?.name  || '').replace(/"/g, '""') + '"',
+        '"' + (a?.name  || '').replace(/"/g, '""') + '"',
+        t.priority ? 'Yes' : 'No',
+        t.done     ? 'Yes' : 'No',
+        '"' + (t.notes  || '').replace(/"/g, '""') + '"',
+        t.source || 'tasks'
+      ]);
+    });
+    const csv  = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = 'life-organizer-tasks.csv';
+    a.click();
+    showSettingsToast('CSV exported');
+  });
+
+  document.getElementById('s-clear-row').addEventListener('click', () => {
+    if (!confirm('Delete ALL tasks, inbox items, lists and categories? This cannot be undone.')) return;
+    tasks.length = 0;
+    inboxItems.length = 0;
+    lists.length = 0;
+    AREAS.length = 0;
+    PROJECTS.length = 0;
+    save();
+    showSettingsToast('All data cleared');
+  });
+
+  // ── Navigation config rows ──
+  const navList = document.getElementById('s-nav-list');
+  const navConfig = getNavConfig();
+  let dragSrcIdx = null;
+
+  function renderNavRows() {
+    navList.innerHTML = '';
+    navConfig.forEach((item, idx) => {
+      const def = NAV_TABS[item.id];
+      if (!def) return;
+      const row = document.createElement('div');
+      row.draggable = true;
+      row.dataset.idx = idx;
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:grab;user-select:none;transition:background 0.15s;';
+      row.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2" style="flex-shrink:0;opacity:0.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <span style="flex:1;font-size:15px;color:var(--text-primary)">${def.label}</span>
+        <label class="td-toggle" style="margin:0">
+          <input type="checkbox" data-nav-id="${item.id}" ${item.visible ? 'checked' : ''}>
+          <div class="td-toggle-track"></div>
+        </label>`;
+
+      // Toggle handler
+      row.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
+        item.visible = e.target.checked;
+        saveNavConfig(navConfig);
+        buildNavBar();
+      });
+
+      // Drag handlers
+      row.addEventListener('dragstart', (e) => {
+        dragSrcIdx = idx;
+        row.style.opacity = '0.5';
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      row.addEventListener('dragend', () => {
+        row.style.opacity = '1';
+        navList.querySelectorAll('[data-idx]').forEach(r => r.style.background = '');
+      });
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        row.style.background = 'rgba(255,255,255,0.04)';
+      });
+      row.addEventListener('dragleave', () => {
+        row.style.background = '';
+      });
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragSrcIdx === null || dragSrcIdx === idx) return;
+        const moved = navConfig.splice(dragSrcIdx, 1)[0];
+        navConfig.splice(idx, 0, moved);
+        saveNavConfig(navConfig);
+        buildNavBar();
+        renderNavRows();
+      });
+
+      // Touch drag support
+      let touchStartY = 0;
+      let touchClone = null;
+      let touchMoveIdx = idx;
+      row.addEventListener('touchstart', (e) => {
+        dragSrcIdx = idx;
+        touchStartY = e.touches[0].clientY;
+        touchClone = row.cloneNode(true);
+        touchClone.style.cssText = row.style.cssText + 'position:fixed;left:0;right:0;z-index:9999;background:var(--surface-raised);box-shadow:0 4px 20px rgba(0,0,0,0.3);pointer-events:none;';
+        touchClone.style.top = row.getBoundingClientRect().top + 'px';
+        document.body.appendChild(touchClone);
+        row.style.opacity = '0.3';
+      }, { passive: true });
+      row.addEventListener('touchmove', (e) => {
+        if (!touchClone) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchClone.style.top = (row.getBoundingClientRect().top + touch.clientY - touchStartY) + 'px';
+        // Find which row we're over
+        const rows = [...navList.querySelectorAll('[data-idx]')];
+        rows.forEach(r => r.style.background = '');
+        for (const r of rows) {
+          const rect = r.getBoundingClientRect();
+          if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+            r.style.background = 'rgba(255,255,255,0.04)';
+            touchMoveIdx = parseInt(r.dataset.idx);
+            break;
+          }
+        }
+      }, { passive: false });
+      row.addEventListener('touchend', () => {
+        if (touchClone) {
+          touchClone.remove();
+          touchClone = null;
+        }
+        row.style.opacity = '1';
+        navList.querySelectorAll('[data-idx]').forEach(r => r.style.background = '');
+        if (dragSrcIdx !== null && dragSrcIdx !== touchMoveIdx) {
+          const moved = navConfig.splice(dragSrcIdx, 1)[0];
+          navConfig.splice(touchMoveIdx, 0, moved);
+          saveNavConfig(navConfig);
+          buildNavBar();
+          renderNavRows();
+        }
+        dragSrcIdx = null;
+      });
+
+      navList.appendChild(row);
+    });
+  }
+  renderNavRows();
+}
+
+let settingsToastTimer = null;
+function showSettingsToast(msg) {
+  let toast = document.getElementById('settings-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'settings-toast';
+    toast.style.cssText = `position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+      background:var(--surface-raised);border:1px solid var(--border);color:var(--text-primary);
+      font-size:13px;padding:10px 18px;border-radius:20px;z-index:9999;
+      box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:opacity 0.3s;white-space:nowrap`;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(settingsToastTimer);
+  settingsToastTimer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+}
+
+// Settings gear button is wired up inside buildNavBar()
+
+
+// ── DESKTOP LAYOUT ────────────────────────────────────────────────────────────
+
+let desktopView = 'today';
+
+function isDesktop() { return window.innerWidth >= 768; }
+
+function buildSidebarAreas() {
+  const container = document.getElementById('sb-areas');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (AREAS.length === 0) return;
+
+  const title = document.createElement('div');
+  title.className = 'sb-section-title';
+  title.textContent = 'Areas';
+  container.appendChild(title);
+
+  AREAS.forEach(a => {
+    const areaProjects = PROJECTS.filter(p => p.areaId === a.id);
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-area';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'sb-area-header';
+    hdr.innerHTML = `
+      <div class="sb-area-dot" style="background:${a.color}"></div>
+      <span style="flex:1">${a.name}</span>
+      ${areaProjects.length ? `<svg class="sb-area-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>` : ''}
+    `;
+
+    const projList = document.createElement('div');
+    projList.className = 'sb-projects';
+
+    areaProjects.forEach(p => {
+      const pRow = document.createElement('div');
+      pRow.className = 'sb-project';
+      pRow.dataset.projectId = p.id;
+      const doneTasks = tasks.filter(t => t.projectId === p.id && t.done).length;
+      const totalTasks = tasks.filter(t => t.projectId === p.id).length;
+      pRow.innerHTML = `
+        <div class="sb-area-dot" style="background:${a.color};width:6px;height:6px"></div>
+        <span style="flex:1">${p.name}</span>
+        ${totalTasks ? `<span style="font-size:11px;color:var(--text-tertiary)">${totalTasks - doneTasks}</span>` : ''}
+      `;
+      pRow.addEventListener('click', () => switchDesktopView('project:' + p.id));
+      projList.appendChild(pRow);
+    });
+
+    hdr.addEventListener('click', () => {
+      if (areaProjects.length) {
+        const chevron = hdr.querySelector('.sb-area-chevron');
+        chevron && chevron.classList.toggle('open');
+        projList.classList.toggle('open');
+      } else {
+        switchDesktopView('area:' + a.id);
+      }
+    });
+
+    wrap.appendChild(hdr);
+    if (areaProjects.length) wrap.appendChild(projList);
+    container.appendChild(wrap);
+  });
+}
+
+function updateSidebarCounts() {
+  const todayCount = tasks.filter(t => t.due && isSameDay(t.due, today) && !t.done).length
+                   + tasks.filter(t => t.due && t.due < today && !isSameDay(t.due, today) && !t.done).length;
+  const inboxCount = inboxItems.length;
+  const todayEl = document.getElementById('sb-count-today');
+  const inboxEl = document.getElementById('sb-count-inbox');
+  if (todayEl) todayEl.textContent = todayCount || '';
+  if (inboxEl) inboxEl.textContent = inboxCount || '';
+}
+
+function switchDesktopView(view) {
+  desktopView = view;
+
+  // Update active state
+  document.querySelectorAll('.sb-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.desktopView === view);
+  });
+  document.querySelectorAll('.sb-project').forEach(el => {
+    el.classList.toggle('active', 'project:' + el.dataset.projectId === view);
+  });
+
+  renderDesktopContent();
+}
+
+function renderDesktopContent() {
+  if (!isDesktop()) return;
+
+  const titleEl    = document.getElementById('desktop-content-title');
+  const subtitleEl = document.getElementById('desktop-content-subtitle');
+  const scroll     = document.getElementById('desktop-scroll');
+  const input      = document.getElementById('desktop-new-task-input');
+  const newTaskBar = document.getElementById('desktop-new-task');
+
+  if (!scroll) return;
+
+  // Hide new-task bar on views where it doesn't apply
+  const hideBar = ['settings', 'lists'].includes(desktopView);
+  if (newTaskBar) newTaskBar.style.display = hideBar ? 'none' : 'flex';
+
+  // Set placeholder based on view
+  input.placeholder = 'New to-do';
+
+  if (desktopView === 'today') {
+    titleEl.textContent = 'Today';
+    subtitleEl.textContent = today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+    scroll.innerHTML = '';
+
+    // Overdue
+    const overdue = tasks.filter(t => t.due && t.due < today && !isSameDay(t.due, today) && !t.done);
+    if (overdue.length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'section-header';
+      hdr.style.color = 'var(--overdue)';
+      hdr.textContent = 'Overdue · ' + overdue.length;
+      scroll.appendChild(hdr);
+      overdue.forEach(t => scroll.appendChild(makeTaskRow(t, true)));
+    }
+
+    const todayTasks = tasks.filter(t => t.due && isSameDay(t.due, today));
+    const todayEvents = events.filter(e => isSameDay(e.start, today));
+
+    if (todayTasks.length || todayEvents.length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'section-header';
+      hdr.textContent = 'Today';
+      scroll.appendChild(hdr);
+    }
+
+    const sorted = [
+      ...todayEvents.sort((a,b) => a.start - b.start),
+      ...todayTasks.filter(t => !t.done),
+    ];
+    sorted.forEach(item => {
+      if (item.type === 'event') scroll.appendChild(makeEventRow(item));
+      else scroll.appendChild(makeTaskRow(item, false));
+    });
+
+    const done = todayTasks.filter(t => t.done);
+    if (done.length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'section-header';
+      hdr.textContent = 'Completed · ' + done.length;
+      scroll.appendChild(hdr);
+      done.forEach(t => scroll.appendChild(makeTaskRow(t, false)));
+    }
+
+    if (scroll.children.length === 0) {
+      scroll.innerHTML = '<div class="inbox-empty"><p class="inbox-empty-title">Nothing for today</p><p>Enjoy your day.</p></div>';
+    }
+
+  } else if (desktopView === 'inbox') {
+    titleEl.textContent = 'Inbox';
+    subtitleEl.textContent = inboxItems.length + ' items';
+    scroll.innerHTML = '';
+    input.placeholder = 'Capture a thought…';
+
+    if (inboxItems.length === 0) {
+      scroll.innerHTML = '<div class="inbox-empty"><p class="inbox-empty-title">Inbox is empty</p><p>Type above or press N to capture.</p></div>';
+    } else {
+      inboxItems.forEach(item => {
+        const row = makeTaskRow(item, false);
+        scroll.appendChild(row);
+      });
+    }
+
+  } else if (desktopView === 'upcoming') {
+    titleEl.textContent = 'Upcoming';
+    subtitleEl.textContent = 'Next 7 days';
+    scroll.innerHTML = '';
+
+    for (let i = 1; i <= 7; i++) {
+      const dt = new Date(today);
+      dt.setDate(today.getDate() + i);
+      const dayTasks  = tasks.filter(t => t.due && isSameDay(t.due, dt) && !t.done);
+      const dayEvents = events.filter(e => isSameDay(e.start, dt));
+      if (!dayTasks.length && !dayEvents.length) continue;
+
+      const hdr = document.createElement('div');
+      hdr.className = 'upcoming-date-header';
+      hdr.innerHTML = `<div class="date-label">${dt.toLocaleDateString('en-US',{weekday:'long'})}</div>
+        <div class="date-sub">${dt.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`;
+      scroll.appendChild(hdr);
+      [...dayEvents.sort((a,b)=>a.start-b.start), ...dayTasks].forEach(item => {
+        if (item.type === 'event') scroll.appendChild(makeEventRow(item));
+        else scroll.appendChild(makeTaskRow(item, false));
+      });
+    }
+
+    if (scroll.children.length === 0) {
+      scroll.innerHTML = '<div class="inbox-empty"><p class="inbox-empty-title">Nothing upcoming</p></div>';
+    }
+
+  } else if (desktopView === 'someday') {
+    titleEl.textContent = 'Someday';
+    subtitleEl.textContent = 'No due date tasks';
+    scroll.innerHTML = '';
+    const someday = tasks.filter(t => !t.due && !t.done);
+    if (someday.length === 0) {
+      scroll.innerHTML = '<div class="inbox-empty"><p class="inbox-empty-title">Nothing here yet</p><p>Tasks without a due date will appear here.</p></div>';
+    } else {
+      someday.forEach(t => scroll.appendChild(makeTaskRow(t, false)));
+    }
+
+  } else if (desktopView === 'lists') {
+    titleEl.textContent = 'Lists';
+    subtitleEl.textContent = lists.length + ' lists';
+    // Render the mobile lists view inside desktop scroll
+    scroll.innerHTML = '';
+    const tmp = document.createElement('div');
+    tmp.id = 'lists-list-desktop';
+    scroll.appendChild(tmp);
+    // Temporarily point renderLists to the desktop container
+    const orig = document.getElementById('lists-list');
+    orig.id = 'lists-list-orig';
+    tmp.id = 'lists-list';
+    renderLists();
+    tmp.id = 'lists-list-desktop';
+    orig.id = 'lists-list';
+
+  } else if (desktopView === 'places') {
+    titleEl.textContent = 'Places';
+    subtitleEl.textContent = locations.length + ' places';
+    scroll.innerHTML = '';
+    const tmp = document.createElement('div');
+    scroll.appendChild(tmp);
+    const orig = document.getElementById('places-list');
+    orig.id = 'places-list-orig';
+    tmp.id = 'places-list';
+    renderPlaces();
+    tmp.id = 'places-list-desktop';
+    orig.id = 'places-list';
+
+  } else if (desktopView === 'settings') {
+    titleEl.textContent = 'Settings';
+    subtitleEl.textContent = '';
+    scroll.innerHTML = '';
+    const tmp = document.createElement('div');
+    scroll.appendChild(tmp);
+    // Swap ID so renderSettings targets this element
+    const origSettings = document.getElementById('settings-list');
+    if (origSettings) origSettings.id = 'settings-list-orig';
+    tmp.id = 'settings-list';
+    renderSettings();
+    tmp.id = 'settings-list-desktop';
+    if (origSettings) origSettings.id = 'settings-list';
+
+  } else if (desktopView.startsWith('project:')) {
+    const projId = desktopView.split(':')[1];
+    const p = PROJECTS.find(pr => pr.id === projId);
+    const a = p ? AREAS.find(ar => ar.id === p.areaId) : null;
+    titleEl.textContent = p ? p.name : 'Project';
+    subtitleEl.textContent = a ? a.name : '';
+    scroll.innerHTML = '';
+
+    const projTasks = tasks.filter(t => t.projectId === projId);
+    const active = projTasks.filter(t => !t.done);
+    const done   = projTasks.filter(t => t.done);
+
+    if (active.length === 0 && done.length === 0) {
+      scroll.innerHTML = '<div class="inbox-empty"><p class="inbox-empty-title">No tasks yet</p></div>';
+    } else {
+      active.forEach(t => scroll.appendChild(makeTaskRow(t, false)));
+      if (done.length) {
+        const hdr = document.createElement('div');
+        hdr.className = 'section-header';
+        hdr.textContent = 'Completed · ' + done.length;
+        scroll.appendChild(hdr);
+        done.forEach(t => scroll.appendChild(makeTaskRow(t, false)));
+      }
+    }
+
+  } else if (desktopView.startsWith('area:')) {
+    const areaId = desktopView.split(':')[1];
+    const a = AREAS.find(ar => ar.id === areaId);
+    titleEl.textContent = a ? a.name : 'Area';
+    subtitleEl.textContent = PROJECTS.filter(p => p.areaId === areaId).length + ' projects';
+    scroll.innerHTML = '';
+    const areaProjects = PROJECTS.filter(p => p.areaId === areaId);
+    areaProjects.forEach(p => {
+      const hdr = document.createElement('div');
+      hdr.className = 'section-header';
+      hdr.textContent = p.name;
+      scroll.appendChild(hdr);
+      tasks.filter(t => t.projectId === p.id && !t.done).forEach(t => scroll.appendChild(makeTaskRow(t, false)));
+    });
+  }
+
+  updateSidebarCounts();
+}
+
+// Desktop new task input
+function initDesktop() {
+  if (!isDesktop()) return;
+
+  if (!isFullMode()) desktopView = 'lists';
+  buildSidebarAreas();
+  updateSidebarCounts();
+  renderDesktopContent();
+
+  // Sidebar nav clicks
+  document.querySelectorAll('.sb-item[data-desktop-view]').forEach(el => {
+    el.addEventListener('click', () => switchDesktopView(el.dataset.desktopView));
+  });
+
+  // New task input
+  const input = document.getElementById('desktop-new-task-input');
+
+  function submitDesktopTask() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (desktopView === 'inbox') {
+      // Inbox → inboxItems (no date)
+      inboxItems.push({ id: 'i'+Date.now(), title: text, type: 'task', done: false, notes: '' });
+    } else if (desktopView === 'someday') {
+      // Someday → tasks with no due date
+      tasks.push({ id: 't'+Date.now(), type: 'task', title: text, projectId: null,
+        due: null, priority: false, done: false, notes: '' });
+    } else if (desktopView.startsWith('project:')) {
+      // Project → tasks assigned to that project
+      const projId = desktopView.split(':')[1];
+      tasks.push({ id: 't'+Date.now(), type: 'task', title: text, projectId: projId,
+        due: null, priority: false, done: false, notes: '' });
+    } else if (desktopView === 'upcoming') {
+      // Upcoming → inbox (no specific day chosen)
+      inboxItems.push({ id: 'i'+Date.now(), title: text, type: 'task', done: false, notes: '' });
+    } else {
+      // Today and everything else → task due today
+      tasks.push({ id: 't'+Date.now(), type: 'task', title: text, projectId: null,
+        due: new Date(today), priority: false, done: false, notes: '' });
+    }
+
+    save();
+    input.value = '';
+    buildSidebarAreas();
+    updateSidebarCounts();
+    renderDesktopContent();
+  }
+
+  if (input) {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitDesktopTask();
+    });
+
+    // Also allow clicking the + icon next to the input
+    const newTaskBar = document.getElementById('desktop-new-task');
+    if (newTaskBar) {
+      newTaskBar.addEventListener('click', e => {
+        input.focus();
+      });
+    }
+
+    // N key to focus input from anywhere
+    document.addEventListener('keydown', e => {
+      if (!isDesktop()) return;
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey &&
+          document.activeElement.tagName !== 'INPUT' &&
+          document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        input.focus();
+      }
+    });
+  }
+
+  // "New To-Do" sidebar button
+  const sbNew = document.getElementById('sb-new-btn');
+  if (sbNew) {
+    sbNew.addEventListener('click', () => {
+      const input = document.getElementById('desktop-new-task-input');
+      if (input) input.focus();
+    });
+  }
+}
+
+// Re-render desktop when refreshCurrentView is called
+const _origRefresh = refreshCurrentView;
+refreshCurrentView = function() {
+  if (isDesktop()) {
+    buildSidebarAreas();
+    renderDesktopContent();
+    updateSidebarCounts();
+    applyUIMode();
+  } else {
+    _origRefresh();
+  }
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+loadAll();
+applyUIMode();
+if (isDesktop()) {
+  initDesktop();
+} else {
+  // Click first visible nav tab on startup
+  const firstTab = document.querySelector('#top-nav .nav-tab[data-view]');
+  if (firstTab) firstTab.click();
+  else { buildWeekStrip(); renderTodayList(); }
+}
+
+let _desktopInited = isDesktop();
+window.addEventListener('resize', () => {
+  const nowDesktop = isDesktop();
+  if (nowDesktop && !_desktopInited) {
+    _desktopInited = true;
+    initDesktop();
+  } else if (nowDesktop) {
+    renderDesktopContent();
+  } else if (!nowDesktop && _desktopInited) {
+    _desktopInited = false;
+    buildWeekStrip();
+    renderTodayList();
+  }
+  applyUIMode();
+});
+</script>
+</body>
+</html>
